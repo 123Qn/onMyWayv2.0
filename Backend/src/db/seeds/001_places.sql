@@ -1,0 +1,48 @@
+-- Sample destinations so the AI bot has real onMyWay data to recommend from.
+-- Safe to re-run: existing slugs are updated, not duplicated.
+-- best_months are general guidance; review before production.
+INSERT INTO places (name, slug, description, category, tags, country_code, region, city,
+                    latitude, longitude, best_months, season_notes)
+VALUES
+  ('Phu Quoc', 'phu-quoc-vn', 'Island with long white-sand beaches, sunsets and night markets.',
+   'island', '{beach,snorkeling,sunset,family}', 'VN', 'Kien Giang', 'Phu Quoc',
+   10.289900, 103.984000, '{11,12,1,2,3,4}', 'Dry season Nov-Apr; rainy and rough seas Jun-Oct.'),
+  ('Nha Trang', 'nha-trang-vn', 'Lively coastal city with islands, diving and seafood.',
+   'beach', '{beach,diving,nightlife,seafood}', 'VN', 'Khanh Hoa', 'Nha Trang',
+   12.238800, 109.196700, '{1,2,3,4,5,6,7,8}', 'Avoid Oct-Dec: rainy season and storms.'),
+  ('My Khe Beach', 'my-khe-da-nang-vn', 'Long, clean city beach in Da Nang close to Hoi An.',
+   'beach', '{beach,city,surfing,family}', 'VN', 'Da Nang', 'Da Nang',
+   16.061000, 108.247000, '{3,4,5,6,7,8}', 'Sep-Dec brings heavy rain and typhoon risk.'),
+  ('Quy Nhon', 'quy-nhon-vn', 'Quiet beaches and coves, less crowded than Nha Trang.',
+   'beach', '{beach,quiet,seafood,road-trip}', 'VN', 'Binh Dinh', 'Quy Nhon',
+   13.782900, 109.219600, '{2,3,4,5,6,7,8}', 'Rainy season roughly Sep-Dec.'),
+  ('Con Dao', 'con-dao-vn', 'Remote island with clear water, coral reefs and turtle nesting.',
+   'island', '{beach,snorkeling,diving,nature,quiet}', 'VN', 'Ba Ria - Vung Tau', 'Con Dao',
+   8.682700, 106.609000, '{3,4,5,6,7,8,9}', 'Calmest seas Mar-Sep.'),
+  ('Mui Ne', 'mui-ne-vn', 'Sand dunes, kitesurfing and resorts near Phan Thiet.',
+   'beach', '{beach,kitesurfing,dunes,windy}', 'VN', 'Binh Thuan', 'Phan Thiet',
+   10.933300, 108.283300, '{11,12,1,2,3,4}', 'Windy and dry Nov-Apr, best for kitesurfing.'),
+  ('Bondi Beach', 'bondi-beach-au', 'Iconic Sydney surf beach with the Bondi to Coogee coastal walk.',
+   'beach', '{beach,surfing,city,coastal-walk}', 'AU', 'NSW', 'Sydney',
+   -33.890800, 151.274300, '{11,12,1,2,3}', 'Summer Dec-Feb is busiest; swim between the flags.'),
+  ('Byron Bay', 'byron-bay-au', 'Laid-back surf town with lighthouse walk and whale watching.',
+   'beach', '{beach,surfing,relaxed,whales}', 'AU', 'NSW', 'Byron Bay',
+   -28.643400, 153.612000, '{9,10,11,3,4,5}', 'Whale season Jun-Nov; very crowded over Christmas.'),
+  ('Whitehaven Beach', 'whitehaven-beach-au', 'Pure silica sand in the Whitsundays on the Great Barrier Reef.',
+   'beach', '{beach,island,reef,sailing}', 'AU', 'QLD', 'Whitsunday Islands',
+   -20.282300, 149.038800, '{6,7,8,9,10}', 'Nov-May is stinger (jellyfish) season: wear a stinger suit.'),
+  ('Gold Coast', 'gold-coast-au', 'Surf beaches, theme parks and hinterland rainforest.',
+   'beach', '{beach,surfing,family,theme-parks}', 'AU', 'QLD', 'Gold Coast',
+   -28.016700, 153.400000, '{9,10,11,3,4,5}', 'Warm almost all year; summer is humid and stormy.'),
+  ('Bali', 'bali-id', 'Beaches, rice terraces, temples and surf.',
+   'island', '{beach,surfing,culture,temples}', 'ID', 'Bali', 'Denpasar',
+   -8.409500, 115.188900, '{4,5,6,7,8,9,10}', 'Dry season Apr-Oct; wet season Nov-Mar.'),
+  ('Phuket', 'phuket-th', 'Thailand''s largest island with beaches and island-hopping.',
+   'island', '{beach,island-hopping,nightlife,family}', 'TH', 'Phuket', 'Phuket',
+   7.880400, 98.392300, '{11,12,1,2,3,4}', 'West-coast seas rough during May-Oct monsoon.')
+ON CONFLICT (slug) DO UPDATE SET
+  description  = EXCLUDED.description,
+  category     = EXCLUDED.category,
+  tags         = EXCLUDED.tags,
+  best_months  = EXCLUDED.best_months,
+  season_notes = EXCLUDED.season_notes;

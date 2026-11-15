@@ -1,0 +1,76 @@
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import * as api from "./api";
+import type { User } from "./api";
+import { getGoogleIdToken, signOutGoogle } from "./googleAuth";
+
+type AuthState = {
+  user: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
+  /** Resolves false if the user closed the Google account picker */
+  signInWithGoogle: () => Promise<boolean>;
+  signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthState | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // api.ts reports every session change: login, token refresh, forced sign-out
+    const unsubscribe = api.subscribeSession((session) => setUser(session?.user ?? null));
+
+    api
+      .loadSession()
+      .then((session) => {
+        if (!session) return;
+        setUser(session.user);
+        // Check the session in the background; an expired refresh token signs the user out
+        api.fetchMe().catch(() => {});
+      })
+      .finally(() => setLoading(false));
+
+    return unsubscribe;
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    await api.login(email.trim(), password);
+  };
+
+  const signUp = async (name: string, email: string, password: string) => {
+    await api.register(name.trim(), email.trim(), password);
+  };
+
+  const signInWithGoogle = async () => {
+    const idToken = await getGoogleIdToken();
+    if (!idToken) return false;
+    await api.googleLogin(idToken);
+    return true;
+  };
+
+  const signOut = async () => {
+    await api.logout();
+    await signOutGoogle();
+  };
+
+  const deleteAccount = async () => {
+    await api.deleteAccount();
+    await signOutGoogle();
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, signOut, deleteAccount }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
+}

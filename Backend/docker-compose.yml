@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: onmyway-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: onmyway
+      POSTGRES_PASSWORD: onmyway_dev
+      POSTGRES_DB: onmyway
+    ports:
+      - "5433:5432"
+    volumes:
+      - onmyway_pgdata:/var/lib/postgresql/data
+
+volumes:
+  onmyway_pgdata:

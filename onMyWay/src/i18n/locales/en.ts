@@ -1,0 +1,75 @@
+// English (default). Every other locale must have exactly these keys — see ../index.ts.
+// Use {{name}} for values filled in at runtime: t("auth.validation.passwordTooShort", { min: 6 })
+export const en = {
+  common: {
+    cancel: "Cancel",
+    or: "or",
+    genericError: "Something went wrong",
+    tryAgainLater: "Please try again later",
+    networkError: "Can't connect to the server",
+  },
+  tabs: {
+    home: "Home",
+    trips: "Trips",
+    createTrip: "Create trip",
+    community: "Community",
+    profile: "Profile",
+  },
+  fields: {
+    name: "Full name",
+    namePlaceholder: "John Smith",
+    email: "Email",
+    emailPlaceholder: "you@example.com",
+    password: "Password",
+    passwordPlaceholder: "Enter your password",
+    newPasswordPlaceholder: "At least {{min}} characters",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+  },
+  auth: {
+    login: {
+      title: "Welcome back",
+      subtitle: "Sign in to continue your journey",
+      submit: "Sign in",
+      noAccount: "Don't have an account?",
+      goToRegister: "Sign up",
+      failed: "Sign in failed, please try again",
+      invalidCredentials: "Incorrect email or password",
+    },
+    register: {
+      title: "Create account",
+      subtitle: "Plan, save and share your trips with the community",
+      submit: "Sign up",
+      hasAccount: "Already have an account?",
+      goToLogin: "Sign in",
+      failed: "Sign up failed, please try again",
+      emailTaken: "This email is already registered",
+    },
+    validation: {
+      emailAndPasswordRequired: "Please enter your email and password",
+      allFieldsRequired: "Please fill in all fields",
+      invalidEmail: "Please enter a valid email",
+      passwordTooShort: "Password must be at least {{min}} characters",
+    },
+    google: {
+      continue: "Continue with Google",
+      failed: "Google sign-in failed, please try again",
+      notConfigured: "Google sign-in is not configured",
+      serverNotConfigured: "Google sign-in is not configured on the server",
+      needsDevBuild: "Google sign-in needs a development build (it doesn't work in Expo Go)",
+      noToken: "Didn't receive a token from Google",
+      noPlayServices: "Google Play Services is not available on this device",
+      verifyFailed: "Couldn't verify your Google account",
+    },
+  },
+  profile: {
+    title: "Profile",
+    signOut: "Sign out",
+    signOutConfirm: "Are you sure you want to sign out?",
+    deleteAccount: "Delete account",
+    deleteConfirm:
+      "Your account and all of your trips, posts and photos will be permanently deleted. This can't be undone.",
+    deleteConfirmButton: "Delete permanently",
+    deleteFailed: "Couldn't delete account",
+  },
+};

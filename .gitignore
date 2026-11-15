@@ -1,0 +1,13 @@
+@"
+node_modules/
+.env
+.env.*
+!.env.example
+*.zip
+.expo/
+.DS_Store
+Thumbs.db
+__pycache__/
+.venv/
+"@ | Out-File -Encoding utf8 .gitignore
+Docs/
