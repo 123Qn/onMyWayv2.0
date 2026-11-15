@@ -23,6 +23,7 @@ function RootNavigator() {
         <Stack.Screen name="post/[id]" />
         <Stack.Screen name="badges" />
         <Stack.Screen name="frames" />
+        <Stack.Screen name="moments" options={{ animation: "fade", presentation: "fullScreenModal" }} />
         <Stack.Screen name="create" options={{ presentation: "modal", gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!user}>

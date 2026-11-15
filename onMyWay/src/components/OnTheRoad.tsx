@@ -1,18 +1,29 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
-import { getPostById, ON_THE_ROAD } from "../lib/mockFeed";
+import { useAuth } from "../lib/AuthContext";
+import { timeAgo } from "../lib/format";
+import { groupMoments, useFeedPosts, type MomentGroup } from "../lib/mockFeed";
+import { useSeenMoments } from "../lib/postStore";
 import { colors, font } from "../lib/theme";
 import { Avatar } from "./Avatar";
 
-// "Stories" of travelers posting live from a trip. The dashed lime ring is the road from the logo.
+// Live moments from the last 24 hours, one ring per traveler, like stories.
+// The dashed lime ring (the road from the logo) means there are moments you haven't watched.
 export function OnTheRoad() {
-  const travelers = ON_THE_ROAD.flatMap(({ postId, day }) => {
-    const post = getPostById(postId);
-    return post ? [{ post, day }] : [];
-  });
+  const { user } = useAuth();
+  const posts = useFeedPosts();
+  const { seen } = useSeenMoments();
+
+  const groups = useMemo(() => groupMoments(posts), [posts]);
+  const mine = groups.find((g) => g.author === user?.name);
+  const others = groups.filter((g) => g !== mine);
+
+  const openCamera = () => router.push({ pathname: "/create", params: { kind: "moment" } });
+  const openViewer = (author: string) => router.push({ pathname: "/moments", params: { author } });
 
   return (
     <View style={styles.container}>
@@ -22,33 +33,90 @@ export function OnTheRoad() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {travelers.map(({ post, day }) => (
-          <Pressable
-            key={post.id}
-            onPress={() => router.push({ pathname: "/post/[id]", params: { id: String(post.id) } })}
-            accessibilityRole="button"
-            accessibilityLabel={`${post.author.name}, ${post.place.name}, ${t("feed.dayN", { count: day })}`}
-            style={({ pressed }) => [styles.item, pressed && styles.pressed]}
-          >
-            <View style={styles.ring}>
-              <Image source={post.imageUrl} style={styles.photo} contentFit="cover" transition={200} />
-              <View style={styles.avatarBadge}>
-                <Avatar name={post.author.name} size={24} />
-              </View>
-            </View>
-            <View style={styles.dayPill}>
-              <Text style={styles.dayText}>{t("feed.dayN", { count: day })}</Text>
-            </View>
-            <Text style={styles.name} numberOfLines={1}>
-              {post.author.name.split(" ")[0]}
-            </Text>
-            <Text style={styles.place} numberOfLines={1}>
-              {post.place.name}
-            </Text>
-          </Pressable>
+        {/* My ring: watch my moments when I have some, otherwise straight to the camera */}
+        <Pressable
+          onPress={mine ? () => openViewer(mine.author) : openCamera}
+          accessibilityRole="button"
+          accessibilityLabel={mine ? t("feed.viewMoments", { name: t("feed.yourMoment") }) : t("feed.addMoment")}
+          style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+        >
+          <View style={[styles.ring, !mine && styles.ringAdd]}>
+            {mine ? (
+              <Image source={mine.latest.imageUrl} style={styles.photo} contentFit="cover" transition={200} />
+            ) : (
+              <View style={styles.addInner}>{user ? <Avatar name={user.name} size={RING - 14} /> : null}</View>
+            )}
+            <Pressable
+              onPress={openCamera}
+              accessibilityRole="button"
+              accessibilityLabel={t("feed.addMoment")}
+              hitSlop={8}
+              style={styles.addBadge}
+            >
+              <Ionicons name="add" size={18} color={colors.white} />
+            </Pressable>
+          </View>
+          <View style={[styles.pill, styles.livePill]}>
+            {mine ? (
+              <Text style={styles.pillTextDark}>{timeAgo(mine.latest.createdAt)}</Text>
+            ) : (
+              <Ionicons name="camera" size={10} color={colors.inkBlack} />
+            )}
+          </View>
+          <Text style={styles.name} numberOfLines={1}>
+            {t("feed.yourMoment")}
+          </Text>
+          <Text style={styles.place} numberOfLines={1}>
+            {mine ? mine.latest.place.name : t("feed.shareNow")}
+          </Text>
+        </Pressable>
+
+        {others.map((group) => (
+          <TravelerRing
+            key={group.author}
+            group={group}
+            unseen={group.moments.some((m) => !seen.has(m.id))}
+            onPress={() => openViewer(group.author)}
+          />
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+function TravelerRing({ group, unseen, onPress }: { group: MomentGroup; unseen: boolean; onPress: () => void }) {
+  const { latest } = group;
+  // During a trip show which day it is, otherwise how fresh the latest moment is
+  const label = latest.tripDay ? t("feed.dayN", { count: latest.tripDay }) : timeAgo(latest.createdAt);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${t("feed.viewMoments", { name: group.author })}, ${latest.place.name}, ${label}`}
+      style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+    >
+      <View style={[styles.ring, !unseen && styles.ringSeen]}>
+        <Image
+          source={latest.imageUrl}
+          style={[styles.photo, !unseen && styles.photoSeen]}
+          contentFit="cover"
+          transition={200}
+        />
+        <View style={styles.avatarBadge}>
+          <Avatar name={group.author} size={24} />
+        </View>
+      </View>
+      <View style={[styles.pill, !unseen && styles.pillSeen]}>
+        <Text style={styles.pillText}>{label}</Text>
+      </View>
+      <Text style={[styles.name, !unseen && styles.nameSeen]} numberOfLines={1}>
+        {group.author.split(" ")[0]}
+      </Text>
+      <Text style={styles.place} numberOfLines={1}>
+        {latest.place.name}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -103,7 +171,24 @@ const styles = StyleSheet.create({
     borderColor: colors.limeGreen,
     padding: 3,
   },
+  ringAdd: { borderStyle: "solid", borderColor: colors.border },
+  ringSeen: { borderStyle: "solid", borderColor: colors.border },
   photo: { flex: 1, borderRadius: RING / 2, backgroundColor: colors.limeTint },
+  photoSeen: { opacity: 0.85 },
+  addInner: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: RING / 2, overflow: "hidden" },
+  addBadge: {
+    position: "absolute",
+    right: -4,
+    bottom: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.deepGreen,
+    borderWidth: 3,
+    borderColor: colors.softGray,
+  },
   avatarBadge: {
     position: "absolute",
     right: -4,
@@ -112,8 +197,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.softGray,
   },
-  dayPill: {
+  pill: {
     marginTop: -10,
+    minHeight: 18,
+    justifyContent: "center",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -121,7 +208,11 @@ const styles = StyleSheet.create({
     borderColor: colors.softGray,
     backgroundColor: colors.deepGreen,
   },
-  dayText: { color: colors.white, fontSize: 10, fontWeight: font.bold },
+  livePill: { backgroundColor: colors.limeGreen, paddingHorizontal: 10 },
+  pillSeen: { backgroundColor: colors.textMuted },
+  pillText: { color: colors.white, fontSize: 10, fontWeight: font.bold },
+  pillTextDark: { color: colors.inkBlack, fontSize: 10, fontWeight: font.bold },
   name: { marginTop: 4, color: colors.inkBlack, fontSize: 12, fontWeight: font.bold },
+  nameSeen: { color: colors.textMuted },
   place: { color: colors.textMuted, fontSize: 11, fontWeight: font.regular },
 });

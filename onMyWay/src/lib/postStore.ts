@@ -60,6 +60,21 @@ export function usePostState(postId: number) {
   };
 }
 
+// Moments the user has already watched in the story viewer
+let seenMoments: ReadonlySet<number> = new Set();
+
+export function useSeenMoments() {
+  const seen = useSyncExternalStore(subscribe, () => seenMoments);
+  return {
+    seen,
+    markSeen: (id: number) => {
+      if (seenMoments.has(id)) return;
+      seenMoments = new Set([...seenMoments, id]);
+      emit();
+    },
+  };
+}
+
 // Followed authors, keyed by name until users have ids in the feed
 const following = new Set<string>();
 

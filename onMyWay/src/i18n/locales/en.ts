@@ -111,7 +111,7 @@ export const en = {
     },
     kindHints: {
       trip: "Give it a title and a cover, then add each location with a photo and tips.",
-      moment: "One photo from where you are right now.",
+      moment: "A photo of where you are right now, taken with the camera.",
       question: "Ask travelers for tips about a place.",
     },
     tripTitle: "Trip title",
@@ -128,6 +128,10 @@ export const en = {
     addPhoto: "Add photo",
     changePhoto: "Change",
     photo: "Photo",
+    takeMoment: "Take a photo",
+    momentHint: "Moments are live: the camera and your current location are used.",
+    momentNoGpsTitle: "Couldn't get your location",
+    momentNoGpsBody: "Turn on location for onMyWay, then retake the photo.",
     summary: "Summary (optional)",
     summaryPlaceholder: "The story of this trip in a few lines",
     camera: "Camera",
@@ -160,6 +164,12 @@ export const en = {
     permissionCamera: "Allow camera access in Settings to take photos.",
     permissionLibrary: "Allow photo access in Settings to add photos.",
     pickFailed: "Couldn't add that photo",
+  },
+  moments: {
+    close: "Close",
+    viewPost: "View post",
+    next: "Next",
+    previous: "Previous",
   },
   picker: {
     close: "Close map",
@@ -374,6 +384,10 @@ export const en = {
   },
   feed: {
     onTheRoad: "On the road now",
+    addMoment: "Share a moment",
+    yourMoment: "Your moment",
+    shareNow: "Share now",
+    viewMoments: "View {{name}}'s moments",
     dayN: "Day {{count}}",
     kind: {
       trip: "shared a trip",

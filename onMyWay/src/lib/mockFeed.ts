@@ -33,6 +33,8 @@ export type FeedPost = {
   tookTrip?: number;
   /** Location confirmed from the photos (in-app camera GPS or photo metadata) */
   verified?: boolean;
+  /** Moments posted during an ongoing trip: which day of it */
+  tripDay?: number;
 };
 
 export type TripStop = {
@@ -606,6 +608,201 @@ const EXTRA_POSTS: FeedPost[] = [
   },
 ];
 
+// Live moments from the last day, shown in the "On the road now" row
+const LIVE_MOMENTS: FeedPost[] = [
+  {
+    id: 17,
+    kind: "moment",
+    author: { name: "Linh Tran" },
+    place: { name: "Hon Thom", country: "Vietnam", countryCode: "VN" },
+    category: "island",
+    imageUrl: unsplash("photo-1578922746465-3a80a228f223"),
+    caption: "Riding the longest sea cable car in the world right now 🚡",
+    createdAt: minutesAgo(10),
+    likes: 159,
+    comments: 5,
+    tripDay: 3,
+    verified: true,
+    stops: [
+      {
+        id: "17-1",
+        name: "Hon Thom",
+        caption: "",
+        imageUrl: unsplash("photo-1578922746465-3a80a228f223"),
+        latitude: 9.9585,
+        longitude: 104.017,
+      },
+    ],
+  },
+  {
+    id: 18,
+    kind: "moment",
+    author: { name: "Minh Nguyen" },
+    place: { name: "Ha Long Bay", country: "Vietnam", countryCode: "VN" },
+    category: "nature",
+    imageUrl: unsplash("photo-1504214208698-ea1916a2195a"),
+    caption: "Kayaking into Luon Cave, the water is glass today",
+    createdAt: minutesAgo(40),
+    likes: 166,
+    comments: 6,
+    tripDay: 2,
+    verified: true,
+    stops: [
+      {
+        id: "18-1",
+        name: "Ha Long Bay",
+        caption: "",
+        imageUrl: unsplash("photo-1504214208698-ea1916a2195a"),
+        latitude: 20.877,
+        longitude: 107.064,
+      },
+    ],
+  },
+  {
+    id: 19,
+    kind: "moment",
+    author: { name: "Mai Hoang" },
+    place: { name: "Tam Coc, Ninh Binh", country: "Vietnam", countryCode: "VN" },
+    category: "nature",
+    imageUrl: unsplash("photo-1552733407-5d5c46c3bb3b"),
+    caption: "Our rower paddles with her feet 😮",
+    createdAt: minutesAgo(120),
+    likes: 173,
+    comments: 7,
+    tripDay: 2,
+    verified: true,
+    stops: [
+      {
+        id: "19-1",
+        name: "Tam Coc, Ninh Binh",
+        caption: "",
+        imageUrl: unsplash("photo-1552733407-5d5c46c3bb3b"),
+        latitude: 20.2153,
+        longitude: 105.9339,
+      },
+    ],
+  },
+  {
+    id: 20,
+    kind: "moment",
+    author: { name: "Sofia Rossi" },
+    place: { name: "Dolomites", country: "Italy", countryCode: "IT" },
+    category: "mountain",
+    imageUrl: unsplash("photo-1583244685026-d8519b5e3d21"),
+    caption: "Morning hike done before the crowds",
+    createdAt: minutesAgo(180),
+    likes: 180,
+    comments: 8,
+    tripDay: 4,
+    verified: true,
+    stops: [
+      {
+        id: "20-1",
+        name: "Dolomites",
+        caption: "",
+        imageUrl: unsplash("photo-1583244685026-d8519b5e3d21"),
+        latitude: 46.6,
+        longitude: 12.17,
+      },
+    ],
+  },
+  {
+    id: 21,
+    kind: "moment",
+    author: { name: "Huy Le" },
+    place: { name: "Saigon", country: "Vietnam", countryCode: "VN" },
+    category: "city",
+    imageUrl: unsplash("photo-1583417319070-4a69db38a482"),
+    caption: "Rooftop view after a night of street food",
+    createdAt: minutesAgo(300),
+    likes: 187,
+    comments: 2,
+    verified: true,
+    stops: [
+      {
+        id: "21-1",
+        name: "Saigon",
+        caption: "",
+        imageUrl: unsplash("photo-1583417319070-4a69db38a482"),
+        latitude: 10.7769,
+        longitude: 106.7009,
+      },
+    ],
+  },
+  {
+    id: 22,
+    kind: "moment",
+    author: { name: "Lucas Silva" },
+    place: { name: "Diamond Beach", country: "Indonesia", countryCode: "ID" },
+    category: "beach",
+    imageUrl: unsplash("photo-1589394815804-964ed0be2eb5"),
+    caption: "Found an even better beach than yesterday",
+    createdAt: minutesAgo(360),
+    likes: 194,
+    comments: 3,
+    tripDay: 5,
+    verified: true,
+    stops: [
+      {
+        id: "22-1",
+        name: "Diamond Beach",
+        caption: "",
+        imageUrl: unsplash("photo-1589394815804-964ed0be2eb5"),
+        latitude: -8.7883,
+        longitude: 115.6227,
+      },
+    ],
+  },
+  {
+    id: 23,
+    kind: "moment",
+    author: { name: "James Walker" },
+    place: { name: "Sydney", country: "Australia", countryCode: "AU" },
+    category: "city",
+    imageUrl: unsplash("photo-1523482580672-f109ba8cb9be"),
+    caption: "Day one, jet lag who?",
+    createdAt: minutesAgo(480),
+    likes: 201,
+    comments: 4,
+    tripDay: 1,
+    verified: true,
+    stops: [
+      {
+        id: "23-1",
+        name: "Sydney",
+        caption: "",
+        imageUrl: unsplash("photo-1523482580672-f109ba8cb9be"),
+        latitude: -33.8568,
+        longitude: 151.2153,
+      },
+    ],
+  },
+  {
+    id: 24,
+    kind: "moment",
+    author: { name: "Chloe Martin" },
+    place: { name: "Maldives", country: "Maldives", countryCode: "MV" },
+    category: "island",
+    imageUrl: unsplash("photo-1544551763-46a013bb70d5"),
+    caption: "A turtle swam right past me 🐢",
+    createdAt: minutesAgo(1200),
+    likes: 208,
+    comments: 5,
+    tripDay: 6,
+    verified: true,
+    stops: [
+      {
+        id: "24-1",
+        name: "Maldives",
+        caption: "",
+        imageUrl: unsplash("photo-1544551763-46a013bb70d5"),
+        latitude: 4.295,
+        longitude: 73.415,
+      },
+    ],
+  },
+];
+
 // Social details layered on top of the posts
 const SOCIAL: Record<number, Partial<FeedPost>> = {
   1: { companions: ["Mai Hoang", "Khoa Dang"], likedBy: "Mai Hoang", wantToGo: 1240, tookTrip: 312, verified: true },
@@ -620,28 +817,40 @@ const SOCIAL: Record<number, Partial<FeedPost>> = {
   10: { companions: ["Noah Kim"], likedBy: "Ava Johnson", wantToGo: 520, tookTrip: 88 },
   11: { likedBy: "Chloe Martin", wantToGo: 1960, tookTrip: 240, verified: true },
   12: { companions: ["An Pham"], likedBy: "Thao Nguyen", wantToGo: 1330, tookTrip: 286, verified: true },
-  13: { likedBy: "Linh Tran", wantToGo: 380, verified: true },
+  13: { likedBy: "Linh Tran", wantToGo: 380, verified: true, tripDay: 2 },
   14: { likedBy: "Minh Nguyen" },
-  15: { companions: ["Chloe Martin"], likedBy: "Noah Kim", wantToGo: 890, verified: true },
+  15: { companions: ["Chloe Martin"], likedBy: "Noah Kim", wantToGo: 890, verified: true, tripDay: 4 },
   16: { likedBy: "Noah Kim" },
 };
 
-export const MOCK_POSTS: FeedPost[] = [...BASE_POSTS, ...EXTRA_POSTS]
+export const MOCK_POSTS: FeedPost[] = [...BASE_POSTS, ...EXTRA_POSTS, ...LIVE_MOMENTS]
   .map((post) => ({ ...post, ...SOCIAL[post.id] }))
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 export const postKind = (post: FeedPost): PostKind => post.kind ?? "trip";
 
-/** Travelers posting live from a trip, for the "On the road now" row */
-export const ON_THE_ROAD: { postId: number; day: number }[] = [
-  { postId: 1, day: 3 },
-  { postId: 13, day: 2 },
-  { postId: 3, day: 2 },
-  { postId: 15, day: 5 },
-  { postId: 2, day: 1 },
-  { postId: 5, day: 3 },
-  { postId: 4, day: 4 },
-];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** One traveler's moments from the last 24 hours, oldest first (story order) */
+export type MomentGroup = { author: string; moments: FeedPost[]; latest: FeedPost };
+
+/** Moments from the last day grouped per traveler, the most recently active first */
+export function groupMoments(posts: FeedPost[], now = Date.now()): MomentGroup[] {
+  const byAuthor = new Map<string, FeedPost[]>();
+  for (const post of posts) {
+    if (postKind(post) !== "moment" || !post.imageUrl) continue;
+    if (now - Date.parse(post.createdAt) > DAY_MS) continue;
+    const list = byAuthor.get(post.author.name) ?? [];
+    list.push(post);
+    byAuthor.set(post.author.name, list);
+  }
+  return [...byAuthor.entries()]
+    .map(([author, list]) => {
+      const moments = [...list].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return { author, moments, latest: moments[moments.length - 1] };
+    })
+    .sort((a, b) => b.latest.createdAt.localeCompare(a.latest.createdAt));
+}
 
 // Posts created on this device, newest first (until they are saved through the API)
 let myPosts: FeedPost[] = [];

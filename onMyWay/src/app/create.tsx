@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { addPost, type PlaceCategory, type PostKind, type TripStop } from "../lib/mockFeed";
@@ -67,7 +67,10 @@ function choosePhoto(): Promise<PostPhoto | null> {
 export default function CreateScreen() {
   const { user } = useAuth();
   const { frame } = useRewards();
-  const [kind, setKind] = useState<PostKind>("trip");
+  // The feed's "Your moment" shortcut opens this screen as a moment and goes straight to the camera
+  const params = useLocalSearchParams<{ kind?: string }>();
+  const startKind: PostKind = params.kind === "moment" || params.kind === "question" ? params.kind : "trip";
+  const [kind, setKind] = useState<PostKind>(startKind);
   // Which photo slot is loading: "cover", "moment" or a location key
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -114,15 +117,21 @@ export default function CreateScreen() {
     !busy &&
     (kind === "trip"
       ? tripReady
-      : caption.trim().length > 0 && placeName.length > 0 && (kind === "question" || !!momentPhoto));
+      : caption.trim().length > 0 &&
+        placeName.length > 0 &&
+        (kind === "question" || !!momentPhoto?.verified));
 
   const dirty =
     !!title.trim() || !!cover || !!momentPhoto || !!caption.trim() || !!placeText.trim() ||
     locations.some((l) => l.photo || l.name.trim() || l.caption.trim());
 
-  const pickInto = async (slot: string, apply: (photo: PostPhoto) => void) => {
+  const pickInto = async (
+    slot: string,
+    apply: (photo: PostPhoto) => void,
+    source: "ask" | "camera" = "ask"
+  ) => {
     try {
-      const photo = await choosePhotoWithSpinner(slot);
+      const photo = source === "camera" ? await shootWithSpinner(slot) : await choosePhotoWithSpinner(slot);
       if (photo) apply(photo);
     } catch (e) {
       if (e instanceof PermissionError) {
@@ -142,6 +151,13 @@ export default function CreateScreen() {
     return photo;
   };
 
+  // Moments open the camera straight away: the photo and the GPS fix are both from right now
+  const shootWithSpinner = async (slot: string) => {
+    const photo = takePhoto();
+    setBusy(slot);
+    return photo;
+  };
+
   const updateLocation = (key: string, patch: Partial<TripLocation>) =>
     setLocations((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
@@ -152,6 +168,11 @@ export default function CreateScreen() {
       { text: t("create.discard"), style: "destructive", onPress: () => router.back() },
     ]);
   };
+
+  useEffect(() => {
+    if (startKind === "moment") pickInto("moment", setMomentPhoto, "camera");
+    // only once, when opened from the shortcut
+  }, []);
 
   // Android back button asks before throwing a draft away
   useEffect(() => {
@@ -414,15 +435,25 @@ export default function CreateScreen() {
                 photo={momentPhoto}
                 loading={busy === "moment"}
                 aspectRatio={4 / 5}
-                emptyLabel={t("create.addPhoto")}
+                emptyLabel={t("create.takeMoment")}
                 emptyIcon="camera"
-                onPick={() => pickInto("moment", setMomentPhoto)}
+                onPick={() => pickInto("moment", setMomentPhoto, "camera")}
                 showVerification
               />
+              <Text style={styles.fieldHint}>{t("create.momentHint")}</Text>
+              {momentPhoto && !momentPhoto.verified ? (
+                <View style={[styles.banner, styles.bannerWarn]}>
+                  <Ionicons name="warning" size={22} color={colors.error} />
+                  <View style={styles.flex}>
+                    <Text style={styles.bannerTitle}>{t("create.momentNoGpsTitle")}</Text>
+                    <Text style={styles.bannerBody}>{t("create.momentNoGpsBody")}</Text>
+                  </View>
+                </View>
+              ) : null}
             </>
           ) : null}
 
-          {hasProofPhoto ? (
+          {hasProofPhoto && (kind !== "moment" || verified) ? (
             <View style={[styles.banner, verified ? styles.bannerVerified : styles.bannerPlain]}>
               <Ionicons
                 name={verified ? "shield-checkmark" : "information-circle"}
@@ -735,6 +766,7 @@ const styles = StyleSheet.create({
   banner: { flexDirection: "row", gap: 12, marginTop: 18, padding: 14, borderRadius: radius.md },
   bannerVerified: { backgroundColor: colors.limeTint },
   bannerPlain: { backgroundColor: colors.softGray },
+  bannerWarn: { backgroundColor: colors.errorBg },
   bannerTitle: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
   bannerBody: { color: colors.textMuted, fontSize: 13, lineHeight: 18, fontWeight: font.regular, marginTop: 2 },
   lockedPlace: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, backgroundColor: colors.softGray },
