@@ -15,7 +15,18 @@ export const colors = {
   border: "#E2E8E6",
   error: "#D64545",
   errorBg: "#FDECEC",
+  heart: "#EF3E5C", // the heart in the app icon
+  limeTint: "#EEF6E4",
+  gold: "#E0A82E", // legendary rewards
 };
+
+// Avatar backgrounds from the brand palette, with a readable text color for each
+export const avatarPalette = [
+  { bg: colors.deepGreen, fg: colors.white },
+  { bg: colors.tealGreen, fg: colors.white },
+  { bg: colors.skyBlue, fg: colors.white },
+  { bg: colors.limeGreen, fg: colors.inkBlack },
+];
 
 // Brand typography: system font, Regular 400 for body/captions, Bold 700 for titles/headings/usernames
 export const font = {

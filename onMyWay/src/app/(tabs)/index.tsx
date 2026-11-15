@@ -1,45 +1,114 @@
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+import { useMemo, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { t } from "../../i18n";
+import { useAuth } from "../../lib/AuthContext";
+import { MOCK_POSTS } from "../../lib/mockFeed";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
+import { colors, font } from "../../lib/theme";
+import { Avatar } from "../../components/Avatar";
+import { Wordmark } from "../../components/BrandLogo";
+import { CategoryChips, type CategoryFilter } from "../../components/CategoryChips";
+import { DestinationFilter, type Destination } from "../../components/DestinationFilter";
+import { OnTheRoad } from "../../components/OnTheRoad";
+import { PostCard } from "../../components/PostCard";
 
-const ITEMS = Array.from({ length: 40 }, (_, i) => ({
-  id: i + 1,
-  title: `Trip ${i + 1}`,
-  note: "Sydney trip 2 days 1 night, budget friendly, suitable for family",
-}));
+export default function FeedScreen() {
+  const { user } = useAuth();
+  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [country, setCountry] = useState<string | null>(null);
 
-export default function Index() {
+  const inCategory = useMemo(
+    () => (category === "all" ? MOCK_POSTS : MOCK_POSTS.filter((p) => p.category === category)),
+    [category]
+  );
+
+  // Countries with post counts for the current category, most posts first
+  const destinations = useMemo(() => {
+    const byCode = new Map<string, Destination>();
+    for (const post of MOCK_POSTS) {
+      const { countryCode: code, country: name } = post.place;
+      if (!byCode.has(code)) byCode.set(code, { code, name, count: 0 });
+    }
+    for (const post of inCategory) byCode.get(post.place.countryCode)!.count++;
+    return [...byCode.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [inCategory]);
+
+  const posts = useMemo(
+    () => (country ? inCategory.filter((p) => p.place.countryCode === country) : inCategory),
+    [inCategory, country]
+  );
+
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.topBar}>
+        <Wordmark size={28} />
+        {user ? (
+          <Pressable
+            onPress={() => router.navigate("/index4")}
+            accessibilityRole="button"
+            accessibilityLabel={t("feed.openProfile")}
+            hitSlop={8}
+          >
+            <Avatar name={user.name} size={38} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <OnTheRoad />
+
+      <View style={styles.filterRow}>
+        <DestinationFilter
+          destinations={destinations}
+          value={country}
+          onChange={setCountry}
+          totalCount={inCategory.length}
+        />
+      </View>
+
+      <CategoryChips value={category} onChange={setCategory} />
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView
+      <FlatList
+        data={posts}
+        keyExtractor={(post) => String(post.id)}
+        renderItem={({ item }) => <PostCard post={item} />}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="compass" size={48} color={colors.limeGreen} />
+            <Text style={styles.emptyTitle}>{t("feed.empty")}</Text>
+            <Text style={styles.emptyHint}>{t("feed.emptyHint")}</Text>
+          </View>
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        contentContainerStyle={styles.content}
         onScroll={onScrollHideTabBar}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.content}
-      >
-        <Text style={styles.title}>Trips</Text>
-
-        {ITEMS.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardNote}>{item.note}</Text>
-          </View>
-        ))}
-      </ScrollView>
+        showsVerticalScrollIndicator={false}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  content: { padding: 20, gap: 12, paddingBottom: 24 },
-  title: { fontSize: 28, fontWeight: "700", color: "#0B7F70", marginBottom: 4 },
-  card: {
-    height: 140,
-    borderRadius: 20,
-    padding: 16,
-    backgroundColor: "#E3F6D3",
-    justifyContent: "flex-end",
+  container: { flex: 1, backgroundColor: colors.softGray },
+  content: { paddingBottom: 24 },
+  header: { paddingTop: 8, paddingBottom: 16, gap: 18 },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
   },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: "#1B2B28" },
-  cardNote: { fontSize: 14, color: "#2B3B38", marginTop: 4 },
+  filterRow: { paddingHorizontal: 20, marginTop: -2 },
+  separator: { height: 16 },
+  empty: { alignItems: "center", paddingTop: 48, gap: 8 },
+  emptyTitle: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
+  emptyHint: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular },
 });
