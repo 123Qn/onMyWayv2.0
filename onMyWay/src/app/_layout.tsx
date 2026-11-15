@@ -21,6 +21,8 @@ function RootNavigator() {
       <Stack.Protected guard={!!user} redirectTo="/login">
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="post/[id]" />
+        <Stack.Screen name="badges" />
+        <Stack.Screen name="frames" />
       </Stack.Protected>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="(auth)" />

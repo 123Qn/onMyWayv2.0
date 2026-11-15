@@ -8,7 +8,8 @@ import { useAuth } from "../../lib/AuthContext";
 import { MOCK_POSTS } from "../../lib/mockFeed";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors, font } from "../../lib/theme";
-import { Avatar } from "../../components/Avatar";
+import { useRewards } from "../../lib/rewards";
+import { AvatarFrame } from "../../components/AvatarFrame";
 import { Wordmark } from "../../components/BrandLogo";
 import { CategoryChips, type CategoryFilter } from "../../components/CategoryChips";
 import { DestinationFilter, type Destination } from "../../components/DestinationFilter";
@@ -17,6 +18,7 @@ import { PostCard } from "../../components/PostCard";
 
 export default function FeedScreen() {
   const { user } = useAuth();
+  const { frame } = useRewards();
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [country, setCountry] = useState<string | null>(null);
 
@@ -52,7 +54,7 @@ export default function FeedScreen() {
             accessibilityLabel={t("feed.openProfile")}
             hitSlop={8}
           >
-            <Avatar name={user.name} size={38} />
+            <AvatarFrame name={user.name} frame={frame} avatarSize={34} />
           </Pressable>
         ) : null}
       </View>

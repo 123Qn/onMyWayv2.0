@@ -7,7 +7,8 @@ import { compactNumber as compact, flagEmoji, timeAgo } from "../lib/format";
 import { getMockComments, postKind, type FeedPost } from "../lib/mockFeed";
 import { useFollowing, usePostState } from "../lib/postStore";
 import { colors, font, radius } from "../lib/theme";
-import { Avatar } from "./Avatar";
+import { authorFrame } from "../lib/rewards";
+import { AvatarFrame } from "./AvatarFrame";
 import { FaceStack } from "./FaceStack";
 import { PhotoCarousel, type Slide } from "./PhotoCarousel";
 
@@ -35,7 +36,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Avatar name={post.author.name} size={42} />
+        <AvatarFrame name={post.author.name} frame={authorFrame(post.author.name)} avatarSize={40} />
         <View style={styles.headerText}>
           <Text style={styles.authorLine} numberOfLines={1}>
             <Text style={styles.author}>{post.author.name}</Text>
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14 },
+  header: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 6, paddingRight: 14 },
   headerText: { flex: 1, gap: 2 },
   authorLine: { color: colors.inkBlack, fontSize: 15 },
   author: { fontWeight: font.bold },

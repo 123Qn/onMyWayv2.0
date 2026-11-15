@@ -25,6 +25,8 @@ import { useFollowing, usePostState } from "../../lib/postStore";
 import { colors, font, radius } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
+import { AvatarFrame } from "../../components/AvatarFrame";
+import { authorFrame } from "../../lib/rewards";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
@@ -113,7 +115,7 @@ function PostDetail({ postId }: { postId: number }) {
           </View>
 
           <View style={styles.authorRow}>
-            <Avatar name={post.author.name} size={44} />
+            <AvatarFrame name={post.author.name} frame={authorFrame(post.author.name)} avatarSize={44} />
             <View style={styles.authorText}>
               <Text style={styles.authorName}>{post.author.name}</Text>
               <Text style={styles.muted} numberOfLines={1}>
@@ -432,7 +434,7 @@ const styles = StyleSheet.create({
   },
   chipText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
 
-  authorRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 22 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, marginLeft: -12 },
   authorText: { flex: 1, gap: 2 },
   follow: {
     flexDirection: "row",
