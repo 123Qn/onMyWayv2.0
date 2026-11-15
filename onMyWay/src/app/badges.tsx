@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
 import type { BadgeCategory } from "../lib/badges";
-import { ALL_PROGRESS, BADGES, UNLOCKED, type BadgeProgress } from "../lib/rewards";
+import { BADGES, useRewards, type BadgeProgress } from "../lib/rewards";
 import { colors, font, radius } from "../lib/theme";
 import { BadgeIcon } from "../components/BadgeIcon";
 import { BadgeSheet } from "../components/BadgeSheet";
@@ -16,14 +16,15 @@ const FILTERS: Filter[] = ["all", "explorer", "terrain", "distance", "creator", 
 export default function BadgesScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<BadgeProgress | null>(null);
+  const { progress, unlocked } = useRewards();
 
   // Unlocked first, then the locked ones closest to unlocking
   const items = useMemo(() => {
-    const list = filter === "all" ? ALL_PROGRESS : ALL_PROGRESS.filter((p) => p.badge.category === filter);
+    const list = filter === "all" ? progress : progress.filter((p) => p.badge.category === filter);
     return [...list].sort(
       (a, b) => Number(b.unlocked) - Number(a.unlocked) || b.current / b.goal - a.current / a.goal
     );
-  }, [filter]);
+  }, [filter, progress]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -52,14 +53,14 @@ export default function BadgesScreen() {
           <View style={styles.top}>
             <View style={styles.summary}>
               <Text style={styles.summaryCount}>
-                {UNLOCKED.length}
+                {unlocked.length}
                 <Text style={styles.summaryTotal}> / {BADGES.length}</Text>
               </Text>
               <Text style={styles.summaryLabel}>
-                {t("rewards.collected", { count: UNLOCKED.length, total: BADGES.length })}
+                {t("rewards.collected", { count: unlocked.length, total: BADGES.length })}
               </Text>
               <View style={styles.track}>
-                <View style={[styles.fill, { width: `${(UNLOCKED.length / BADGES.length) * 100}%` }]} />
+                <View style={[styles.fill, { width: `${(unlocked.length / BADGES.length) * 100}%` }]} />
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>

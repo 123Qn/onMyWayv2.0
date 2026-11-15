@@ -5,21 +5,21 @@ import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { compactNumber as compact, flagEmoji, timeAgo } from "../lib/format";
-import { getMockComments, postKind, type FeedPost } from "../lib/mockFeed";
+import { getMockComments, isByUser, postKind, type FeedPost } from "../lib/mockFeed";
 import { useFollowing, usePostState } from "../lib/postStore";
 import { colors, font, radius } from "../lib/theme";
-import { authorFrame, type FrameId } from "../lib/rewards";
+import { useAuthorFrame } from "../lib/rewards";
 import { AvatarFrame } from "./AvatarFrame";
 import { FaceStack } from "./FaceStack";
 import { PhotoCarousel, type Slide } from "./PhotoCarousel";
 
 function PostCardImpl({ post }: { post: FeedPost }) {
-  const { liked, saved, newComments, toggleLike, toggleSave } = usePostState(post.id);
-  const { isFollowing, toggleFollow } = useFollowing(post.author.name);
+  const { liked, saved, likes, newComments, toggleLike, toggleSave } = usePostState(post);
+  const { isFollowing, toggleFollow } = useFollowing(post.author, post.followingAuthor);
   const { user } = useAuth();
-  const isMine = user?.name === post.author.name;
+  const isMine = isByUser(post, user);
+  const frame = useAuthorFrame(post.author, isMine);
   const kind = postKind(post);
-  const likes = post.likes + (liked ? 1 : 0);
   const commentCount = post.comments + newComments.length;
   const openPost = () => router.push({ pathname: "/post/[id]", params: { id: String(post.id) } });
 
@@ -39,7 +39,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <AvatarFrame name={post.author.name} frame={(post.author.frame as FrameId | undefined) ?? authorFrame(post.author.name)} avatarSize={40} />
+        <AvatarFrame name={post.author.name} frame={frame} avatarSize={40} />
         <View style={styles.headerText}>
           <Text style={styles.authorLine} numberOfLines={1}>
             <Text style={styles.author}>{post.author.name}</Text>

@@ -17,8 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
-import { addPost, type PlaceCategory, type PostKind, type TripStop } from "../lib/mockFeed";
-import { useRewards } from "../lib/rewards";
+import type { PlaceCategory, PostKind } from "../lib/mockFeed";
+import { createPost, uploadPhoto, type NewPostStop } from "../lib/postsApi";
 import { PermissionError, pickPhotos, takePhoto, type PostPhoto } from "../lib/verify";
 import { LocationPicker, type Coords } from "../components/LocationPicker";
 import { colors, font, radius } from "../lib/theme";
@@ -66,13 +66,13 @@ function choosePhoto(): Promise<PostPhoto | null> {
 
 export default function CreateScreen() {
   const { user } = useAuth();
-  const { frame } = useRewards();
   // The feed's "Your moment" shortcut opens this screen as a moment and goes straight to the camera
   const params = useLocalSearchParams<{ kind?: string }>();
   const startKind: PostKind = params.kind === "moment" || params.kind === "question" ? params.kind : "trip";
   const [kind, setKind] = useState<PostKind>(startKind);
   // Which photo slot is loading: "cover", "moment" or a location key
   const [busy, setBusy] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
 
   // Trip
   const [title, setTitle] = useState("");
@@ -162,6 +162,7 @@ export default function CreateScreen() {
     setLocations((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const close = () => {
+    if (posting) return;
     if (!dirty) return router.back();
     Alert.alert(t("create.discardTitle"), undefined, [
       { text: t("create.keepEditing"), style: "cancel" },
@@ -184,52 +185,57 @@ export default function CreateScreen() {
     return () => sub.remove();
   });
 
-  const submit = () => {
-    if (!canPost || !user) return;
+  const submit = async () => {
+    if (!canPost || !user || posting) return;
+    setPosting(true);
+    try {
+      // Upload every photo once (the cover can also be a location photo), then create the post
+      const uris =
+        kind === "trip"
+          ? [cover!.uri, ...locations.map((l) => l.photo!.uri)]
+          : kind === "moment"
+            ? [momentPhoto!.uri]
+            : [];
+      const mediaIds = new Map<string, number>();
+      for (const uri of new Set(uris)) mediaIds.set(uri, (await uploadPhoto(uri)).id);
 
-    let stops: TripStop[] = [];
-    if (kind === "trip") {
-      stops = locations.map((l) => ({
-        id: l.key,
-        name: l.name.trim(),
-        caption: l.caption.trim(),
-        imageUrl: l.photo!.uri,
-        latitude: l.pin!.latitude,
-        longitude: l.pin!.longitude,
-      }));
-    } else if (kind === "moment" && momentPhoto?.latitude !== undefined && momentPhoto.longitude !== undefined) {
-      stops = [
-        {
-          id: `moment-${Date.now()}`,
-          name: placeName,
-          caption: "",
-          imageUrl: momentPhoto.uri,
-          latitude: momentPhoto.latitude,
-          longitude: momentPhoto.longitude,
-        },
-      ];
+      let stops: NewPostStop[] = [];
+      if (kind === "trip") {
+        stops = locations.map((l) => ({
+          name: l.name.trim(),
+          caption: l.caption.trim() || undefined,
+          mediaId: mediaIds.get(l.photo!.uri)!,
+          latitude: l.pin!.latitude,
+          longitude: l.pin!.longitude,
+          fromPhoto: l.pin!.fromPhoto,
+        }));
+      } else if (kind === "moment" && momentPhoto?.latitude !== undefined && momentPhoto.longitude !== undefined) {
+        stops = [
+          {
+            name: placeName,
+            mediaId: mediaIds.get(momentPhoto.uri)!,
+            latitude: momentPhoto.latitude,
+            longitude: momentPhoto.longitude,
+            fromPhoto: momentPhoto.verified,
+          },
+        ];
+      }
+
+      await createPost({
+        kind,
+        title: kind === "trip" ? title.trim() : undefined,
+        caption: caption.trim() || undefined,
+        category,
+        place: { name: placeName, country: verifiedPlace?.country, countryCode: verifiedPlace?.countryCode },
+        coverMediaId: kind === "trip" ? mediaIds.get(cover!.uri) : undefined,
+        tripDays: kind === "trip" ? days : undefined,
+        stops,
+      });
+      router.back();
+    } catch (e) {
+      Alert.alert(t("create.postFailed"), e instanceof Error ? e.message : t("common.genericError"));
+      setPosting(false);
     }
-
-    addPost({
-      kind,
-      title: kind === "trip" ? title.trim() : undefined,
-      author: { name: user.name, frame },
-      place: {
-        name: placeName,
-        country: verifiedPlace?.country ?? "",
-        countryCode: verifiedPlace?.countryCode ?? "",
-      },
-      category,
-      imageUrl: kind === "trip" ? cover!.uri : momentPhoto?.uri ?? "",
-      caption: caption.trim(),
-      tripDays: kind === "trip" ? days : undefined,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      comments: 0,
-      stops,
-      verified,
-    });
-    router.back();
   };
 
   return (
@@ -241,12 +247,16 @@ export default function CreateScreen() {
         <Text style={styles.title}>{t("create.title")}</Text>
         <Pressable
           onPress={submit}
-          disabled={!canPost}
+          disabled={!canPost || posting}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canPost }}
           style={({ pressed }) => [styles.postButton, !canPost && styles.postDisabled, pressed && styles.pressed]}
         >
-          <Text style={styles.postText}>{t("create.post")}</Text>
+          {posting ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.postText}>{t("create.post")}</Text>
+          )}
         </Pressable>
       </View>
 

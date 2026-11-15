@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
-import { FRAMES, getBadge, isFrameUnlocked, rarityColor, useRewards, type FrameDef } from "../lib/rewards";
+import { FRAMES, getBadge, rarityColor, useRewards, type FrameDef } from "../lib/rewards";
 import { colors, font, radius } from "../lib/theme";
 import { AvatarFrame, FramePreview } from "../components/AvatarFrame";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -14,7 +14,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 export default function FramesScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { frame: equipped, equipFrame } = useRewards();
+  const { frame: equipped, equipFrame, isFrameUnlocked } = useRewards();
   const [previewId, setPreviewId] = useState(equipped);
   const preview = FRAMES.find((f) => f.id === previewId)!;
   const unlocked = isFrameUnlocked(preview);

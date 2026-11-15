@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { useFeedPosts } from "../../lib/mockFeed";
+import { refreshFeed } from "../../lib/postsApi";
+import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors, font } from "../../lib/theme";
 import { useRewards } from "../../lib/rewards";
@@ -20,6 +22,19 @@ export default function FeedScreen() {
   const { user } = useAuth();
   const { frame } = useRewards();
   const allPosts = useFeedPosts();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load real posts on open and on pull-to-refresh; the sample posts stay if the server is unreachable
+  const unread = useUnreadCount();
+  const reload = useCallback(async () => {
+    setRefreshing(true);
+    refreshUnreadCount().catch(() => {});
+    await refreshFeed().catch(() => {});
+    setRefreshing(false);
+  }, []);
+  useEffect(() => {
+    refreshFeed().catch(() => {});
+  }, []);
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [country, setCountry] = useState<string | null>(null);
 
@@ -52,6 +67,23 @@ export default function FeedScreen() {
     <View style={styles.header}>
       <View style={styles.topBar}>
         <Wordmark size={28} />
+        <View style={styles.topActions}>
+          <Pressable
+            onPress={() => router.push("/notifications")}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unread ? `${t("notifications.open")}, ${t("notifications.unread", { count: unread })}` : t("notifications.open")
+            }
+            hitSlop={8}
+            style={styles.bell}
+          >
+            <Ionicons name={unread ? "notifications" : "notifications-outline"} size={24} color={colors.inkBlack} />
+            {unread ? (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         {user ? (
           <Pressable
             onPress={() => router.navigate("/index4")}
@@ -62,6 +94,7 @@ export default function FeedScreen() {
             <AvatarFrame name={user.name} frame={frame} avatarSize={34} />
           </Pressable>
         ) : null}
+        </View>
       </View>
 
       <OnTheRoad />
@@ -95,6 +128,9 @@ export default function FeedScreen() {
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={reload} colors={[colors.deepGreen]} tintColor={colors.deepGreen} />
+        }
         onScroll={onScrollHideTabBar}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
@@ -113,6 +149,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
+  topActions: { flexDirection: "row", alignItems: "center", gap: 14 },
+  bell: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  bellBadge: {
+    position: "absolute",
+    top: 2,
+    right: 0,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.heart,
+    borderWidth: 2,
+    borderColor: colors.softGray,
+  },
+  bellBadgeText: { color: colors.white, fontSize: 10, fontWeight: font.bold },
   filterRow: { paddingHorizontal: 20, marginTop: -2 },
   separator: { height: 16 },
   empty: { alignItems: "center", paddingTop: 48, gap: 8 },

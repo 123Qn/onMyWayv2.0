@@ -50,47 +50,48 @@ export const rarityColor: Record<Rarity, { main: string; light: string; dark: st
 };
 
 // ---------------------------------------------------------------------------
-// Stats → badges → XP → level. Mock numbers until the backend counts verified posts.
+// Stats → badges → XP → level. Stats come from the API (verified posts only).
 // ---------------------------------------------------------------------------
 export type TravelStats = Record<Metric, number> & { specials: SpecialBadgeId[] };
 
-export const MY_STATS: TravelStats = {
-  countries: 6,
-  places: 34,
-  km: 7420,
-  beach: 9,
-  island: 4,
-  mountain: 6,
-  city: 12,
-  food: 18,
-  nature: 7,
-  culture: 5,
-  trips: 7,
-  moments: 23,
-  followers: 168,
-  tookTrip: 14,
-  likes: 2340,
-  helpful: 11,
-  months: 8,
-  specials: ["early_bird", "solo", "weekend", "hop_3", "founder"],
+export const EMPTY_STATS: TravelStats = {
+  countries: 0,
+  places: 0,
+  km: 0,
+  beach: 0,
+  island: 0,
+  mountain: 0,
+  city: 0,
+  food: 0,
+  nature: 0,
+  culture: 0,
+  trips: 0,
+  moments: 0,
+  followers: 0,
+  tookTrip: 0,
+  likes: 0,
+  helpful: 0,
+  months: 0,
+  specials: [],
 };
 
 const XP_BY_RARITY: Record<Rarity, number> = { common: 20, rare: 50, epic: 120, legendary: 300 };
 
+// Given to everyone who joined during the beta: a keepsake, not a travel achievement, so no XP.
+// Otherwise every new account would start at Lv. 3.
+const NO_XP = new Set<BadgeId>(["founder"]);
+export const badgeXp = (badge: BadgeDef) => (NO_XP.has(badge.id) ? 0 : XP_BY_RARITY[badge.rarity]);
+
 export type BadgeProgress = { badge: BadgeDef; unlocked: boolean; current: number; goal: number };
 
-export function badgeProgress(badge: BadgeDef, stats: TravelStats = MY_STATS): BadgeProgress {
+export function badgeProgress(badge: BadgeDef, stats: TravelStats): BadgeProgress {
   if (badge.metric && badge.goal) {
-    const current = stats[badge.metric];
+    const current = stats[badge.metric] ?? 0;
     return { badge, unlocked: current >= badge.goal, current: Math.min(current, badge.goal), goal: badge.goal };
   }
   const unlocked = stats.specials.includes(badge.id as SpecialBadgeId);
   return { badge, unlocked, current: unlocked ? 1 : 0, goal: 1 };
 }
-
-export const ALL_PROGRESS = BADGES.map((b) => badgeProgress(b));
-export const UNLOCKED = ALL_PROGRESS.filter((p) => p.unlocked);
-const unlockedIds = new Set(UNLOCKED.map((p) => p.badge.id));
 
 /** Total XP needed to reach `level` (level 1 = 0 XP, each level costs 100 more than the last) */
 const xpForLevel = (level: number) => 50 * level * (level - 1);
@@ -108,11 +109,24 @@ export function levelInfo(xp: number) {
   return { level, title, current: xp - floor, needed: next - floor };
 }
 
-export const MY_XP = UNLOCKED.reduce((sum, p) => sum + XP_BY_RARITY[p.badge.rarity], 0);
-export const MY_LEVEL = levelInfo(MY_XP);
+export type Rewards = {
+  progress: BadgeProgress[];
+  unlocked: BadgeProgress[];
+  level: ReturnType<typeof levelInfo>;
+  isFrameUnlocked: (frame: FrameDef) => boolean;
+};
 
-export function isFrameUnlocked(frame: FrameDef) {
-  return "level" in frame.unlock ? MY_LEVEL.level >= frame.unlock.level : unlockedIds.has(frame.unlock.badge);
+export function computeRewards(stats: TravelStats): Rewards {
+  const progress = BADGES.map((b) => badgeProgress(b, stats));
+  const unlocked = progress.filter((p) => p.unlocked);
+  const ids = new Set(unlocked.map((p) => p.badge.id));
+  const level = levelInfo(unlocked.reduce((sum, p) => sum + badgeXp(p.badge), 0));
+  return {
+    progress,
+    unlocked,
+    level,
+    isFrameUnlocked: (frame) => ("level" in frame.unlock ? level.level >= frame.unlock.level : ids.has(frame.unlock.badge)),
+  };
 }
 
 export const getBadge = (id: BadgeId) => BADGES.find((b) => b.id === id)!;
@@ -132,20 +146,39 @@ const AUTHOR_FRAMES: Record<string, FrameId> = {
 };
 export const authorFrame = (name: string): FrameId => AUTHOR_FRAMES[name] ?? "none";
 
-// ---------------------------------------------------------------------------
-// My equipped frame and pinned badges (in memory until there is a profile API)
-// ---------------------------------------------------------------------------
-type RewardsState = { frame: FrameId; pinned: BadgeId[] };
+/** My own posts always show the frame I have equipped now */
+export function useAuthorFrame(author: { name: string; frame?: string }, mine: boolean): FrameId {
+  const { frame } = useRewards();
+  return mine ? frame : ((author.frame as FrameId | undefined) ?? authorFrame(author.name));
+}
 
-const firstPins = [...UNLOCKED]
-  .sort((a, b) => XP_BY_RARITY[b.badge.rarity] - XP_BY_RARITY[a.badge.rarity])
-  .slice(0, 3)
-  .map((p) => p.badge.id);
+// ---------------------------------------------------------------------------
+// My profile: stats, equipped frame and pinned badges, loaded from and saved to the API
+// ---------------------------------------------------------------------------
+type RewardsState = {
+  userId: number | null;
+  stats: TravelStats;
+  frame: FrameId;
+  pinned: BadgeId[];
+  counts: { posts: number; followers: number; following: number };
+  loaded: boolean;
+};
 
-let state: RewardsState = { frame: "road", pinned: firstPins };
+const INITIAL: RewardsState = {
+  userId: null,
+  stats: EMPTY_STATS,
+  frame: "classic",
+  pinned: [],
+  counts: { posts: 0, followers: 0, following: 0 },
+  loaded: false,
+};
+
+let state: RewardsState = INITIAL;
+let rewards = computeRewards(INITIAL.stats);
 const listeners = new Set<() => void>();
 
 function setState(next: RewardsState) {
+  if (next.stats !== state.stats) rewards = computeRewards(next.stats);
   state = next;
   listeners.forEach((l) => l());
 }
@@ -157,21 +190,98 @@ function subscribe(listener: () => void) {
   };
 }
 
+export type ProfileResponse = {
+  user: { id: number; name: string; frame: FrameId; pinnedBadges: string[]; joinedAt: string };
+  counts: RewardsState["counts"];
+  followedByViewer: boolean;
+  stats: TravelStats;
+};
+
+/** Fill the store from GET /users/:id/profile for the signed-in user */
+export function applyMyProfile(profile: ProfileResponse) {
+  const known = new Set<string>(BADGES.map((b) => b.id));
+  const previous = state;
+  const before = rewards;
+  setState({
+    userId: profile.user.id,
+    stats: { ...EMPTY_STATS, ...profile.stats },
+    frame: profile.user.frame,
+    pinned: profile.user.pinnedBadges.filter((id): id is BadgeId => known.has(id)),
+    counts: profile.counts,
+    loaded: true,
+  });
+  // Celebrate what this refresh unlocked (not the first load after sign-in)
+  if (previous.loaded && previous.userId === profile.user.id) celebrateChanges(before, rewards);
+}
+
+// ---------------------------------------------------------------------------
+// Celebration: new badges, level-ups and frames unlocked since the last refresh
+// ---------------------------------------------------------------------------
+export type Celebration = {
+  badges: BadgeDef[];
+  levelUp?: { level: number; title: LevelTitle };
+  frames: FrameDef[];
+};
+
+let celebration: Celebration | null = null;
+
+function celebrateChanges(before: Rewards, after: Rewards) {
+  const had = new Set(before.unlocked.map((p) => p.badge.id));
+  const badges = after.unlocked.map((p) => p.badge).filter((b) => !had.has(b.id));
+  const frames = FRAMES.filter((f) => f.id !== "none" && after.isFrameUnlocked(f) && !before.isFrameUnlocked(f));
+  const levelUp =
+    after.level.level > before.level.level ? { level: after.level.level, title: after.level.title } : undefined;
+  if (badges.length === 0 && frames.length === 0 && !levelUp) return;
+  celebration = { badges, frames, levelUp };
+  listeners.forEach((l) => l());
+}
+
+export const useCelebration = () => useSyncExternalStore(subscribe, () => celebration);
+
+export function dismissCelebration() {
+  celebration = null;
+  listeners.forEach((l) => l());
+}
+
+/** Forget everything on sign-out */
+export function resetMyProfile() {
+  celebration = null;
+  setState(INITIAL);
+}
+
+// Saving is wired by profileApi so this module stays free of network code
+let persist: (patch: { frame?: FrameId; pinnedBadges?: BadgeId[] }) => Promise<unknown> = async () => {};
+export function setRewardsPersister(fn: typeof persist) {
+  persist = fn;
+}
+
+function saveAndRollback(next: RewardsState, patch: { frame?: FrameId; pinnedBadges?: BadgeId[] }) {
+  const previous = state;
+  setState(next);
+  persist(patch).catch(() => {
+    // Keep stats that may have refreshed meanwhile, undo only this change
+    setState({ ...state, frame: previous.frame, pinned: previous.pinned });
+  });
+}
+
 export const MAX_PINS = 3;
 
 export function useRewards() {
   const current = useSyncExternalStore(subscribe, () => state);
+  const computed = useSyncExternalStore(subscribe, () => rewards);
   return {
     ...current,
-    equipFrame: (frame: FrameId) => setState({ ...state, frame }),
+    ...computed,
+    equipFrame: (frame: FrameId) => saveAndRollback({ ...state, frame }, { frame }),
     /** Returns false when the showcase is already full */
     togglePin: (id: BadgeId) => {
-      if (state.pinned.includes(id)) {
-        setState({ ...state, pinned: state.pinned.filter((p) => p !== id) });
-        return true;
-      }
-      if (state.pinned.length >= MAX_PINS) return false;
-      setState({ ...state, pinned: [...state.pinned, id] });
+      const pinned = state.pinned.includes(id)
+        ? state.pinned.filter((p) => p !== id)
+        : state.pinned.length >= MAX_PINS
+          ? null
+          : [...state.pinned, id];
+      if (!pinned) return false;
+      saveAndRollback({ ...state, pinned }, { pinnedBadges: pinned });
       return true;
     },
   };

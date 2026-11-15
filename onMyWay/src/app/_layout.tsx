@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { NavigationBar } from "expo-navigation-bar";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
+import { CelebrationHost } from "../components/Celebration";
 
 function RootNavigator() {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ function RootNavigator() {
         <Stack.Screen name="post/[id]" />
         <Stack.Screen name="badges" />
         <Stack.Screen name="frames" />
+        <Stack.Screen name="notifications" />
         <Stack.Screen name="moments" options={{ animation: "fade", presentation: "fullScreenModal" }} />
         <Stack.Screen name="create" options={{ presentation: "modal", gestureEnabled: false }} />
       </Stack.Protected>
@@ -39,6 +41,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <NavigationBar style="dark" hidden={false} />
       <RootNavigator />
+      <CelebrationHost />
     </AuthProvider>
   );
 }

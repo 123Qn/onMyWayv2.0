@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import * as api from "./api";
 import type { User } from "./api";
 import { getGoogleIdToken, signOutGoogle } from "./googleAuth";
+import { refreshMyProfile } from "./profileApi";
+import { resetMyProfile } from "./rewards";
+import { refreshUnreadCount, resetNotifications } from "./notifications";
 
 type AuthState = {
   user: User | null;
@@ -36,6 +39,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return unsubscribe;
   }, []);
+
+  // My stats, frame and pinned badges follow the signed-in user
+  useEffect(() => {
+    if (!user) {
+      resetMyProfile();
+      resetNotifications();
+      return;
+    }
+    refreshMyProfile(user.id).catch(() => {});
+    refreshUnreadCount().catch(() => {});
+    // Check for new notifications every minute while signed in
+    const timer = setInterval(() => refreshUnreadCount().catch(() => {}), 60_000);
+    return () => clearInterval(timer);
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     await api.login(email.trim(), password);

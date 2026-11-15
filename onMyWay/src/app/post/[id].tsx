@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -20,13 +20,14 @@ import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { compactNumber, flagEmoji, timeAgo } from "../../lib/format";
-import { getMockComments, getPostById, postKind, type FeedComment, type TripStop } from "../../lib/mockFeed";
+import { getMockComments, getPostById, isByUser, postKind, type FeedComment, type TripStop } from "../../lib/mockFeed";
+import { fetchComments } from "../../lib/postsApi";
 import { useFollowing, usePostState } from "../../lib/postStore";
 import { colors, font, radius } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
 import { AvatarFrame } from "../../components/AvatarFrame";
-import { authorFrame, type FrameId } from "../../lib/rewards";
+import { useAuthorFrame } from "../../lib/rewards";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
@@ -41,10 +42,15 @@ function PostDetail({ postId }: { postId: number }) {
   const post = getPostById(postId)!;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { liked, saved, newComments, toggleLike, toggleSave, addComment } = usePostState(post.id);
+  const { liked, saved, likes, wantToGo, newComments, toggleLike, toggleSave, addComment } = usePostState(post);
+  const isMine = isByUser(post, user);
+  const frame = useAuthorFrame(post.author, isMine);
+  // API posts load their real comments; sample posts use generated ones
+  const [loadedComments, setLoadedComments] = useState<FeedComment[]>([]);
+  const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
-  const { isFollowing, toggleFollow } = useFollowing(post.author.name);
+  const { isFollowing, toggleFollow } = useFollowing(post.author, post.followingAuthor);
   const kind = postKind(post);
   const companions = post.companions ?? [];
   // A trip shows its route; a moment shows where it was taken; a question has no map
@@ -64,24 +70,35 @@ function PostDetail({ postId }: { postId: number }) {
     extrapolate: "clamp",
   });
 
-  const comments = useMemo(() => [...getMockComments(post), ...newComments], [post, newComments]);
-  const commentCount = post.comments + newComments.length;
-  const likes = post.likes + (liked ? 1 : 0);
+  useEffect(() => {
+    if (!post.remote) return;
+    fetchComments(post.id).then(setLoadedComments, () => {});
+  }, [post.id, post.remote]);
+
+  const comments = useMemo(() => {
+    // Comments I just added may also be in the loaded list
+    const added = new Set(newComments.map((c) => c.id));
+    const base = post.remote ? loadedComments.filter((c) => !added.has(c.id)) : getMockComments(post);
+    return [...base, ...newComments];
+  }, [post, loadedComments, newComments]);
+  const commentCount = Math.max(post.comments + newComments.length, comments.length);
 
   const share = () => {
     Share.share({ message: `${post.place.name}, ${post.place.country} — ${post.caption}` }).catch(() => {});
   };
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim();
-    if (!text || !user) return;
-    addComment({
-      id: `new-${Date.now()}`,
-      author: { name: user.name },
-      text,
-      createdAt: new Date().toISOString(),
-    });
-    setDraft("");
+    if (!text || !user || sending) return;
+    setSending(true);
+    try {
+      await addComment(text, user.name);
+      setDraft("");
+    } catch (e) {
+      Alert.alert(e instanceof Error ? e.message : t("common.genericError"));
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -117,7 +134,7 @@ function PostDetail({ postId }: { postId: number }) {
           </View>
 
           <View style={styles.authorRow}>
-            <AvatarFrame name={post.author.name} frame={(post.author.frame as FrameId | undefined) ?? authorFrame(post.author.name)} avatarSize={44} />
+            <AvatarFrame name={post.author.name} frame={frame} avatarSize={44} />
             <View style={styles.authorText}>
               <Text style={styles.authorName}>{post.author.name}</Text>
               <Text style={styles.muted} numberOfLines={1}>
@@ -126,7 +143,7 @@ function PostDetail({ postId }: { postId: number }) {
                   : timeAgo(post.createdAt)}
               </Text>
             </View>
-            {user?.name !== post.author.name ? (
+            {!isMine ? (
             <Pressable
               onPress={toggleFollow}
               accessibilityRole="button"
@@ -191,13 +208,13 @@ function PostDetail({ postId }: { postId: number }) {
 
               <View style={styles.goButton}>
                 <PrimaryButton title={goLabel} icon="navigate" onPress={() => openDirections(post.stops)} />
-                {post.tookTrip || post.wantToGo ? (
+                {post.tookTrip || wantToGo ? (
                   <View style={styles.tookTrip}>
                     <FaceStack
                       names={getMockComments(post).map((c) => c.author.name)}
                       text={[
                         post.tookTrip ? t("post.tookTrip", { count: compactNumber(post.tookTrip) }) : "",
-                        post.wantToGo ? t("post.wantToGoCount", { count: compactNumber(post.wantToGo + (saved ? 1 : 0)) }) : "",
+                        wantToGo ? t("post.wantToGoCount", { count: compactNumber(wantToGo) }) : "",
                       ]
                         .filter(Boolean)
                         .join(" · ")}

@@ -7,6 +7,7 @@ import { rarityColor, useRewards, type BadgeDef, type BadgeProgress } from "../l
 import { colors, font } from "../lib/theme";
 import { BadgeIcon } from "./BadgeIcon";
 import { PrimaryButton } from "./PrimaryButton";
+import { Ionicons } from "@expo/vector-icons";
 
 export function badgeDescription(badge: BadgeDef) {
   return badge.metric && badge.goal
@@ -58,6 +59,13 @@ export function BadgeSheet({ progress, onClose }: { progress: BadgeProgress | nu
           </Text>
         </View>
 
+        {!unlocked && badge.category !== "social" && badge.category !== "community" ? (
+          <View style={styles.howTo}>
+            <Ionicons name="shield-checkmark" size={16} color={colors.deepGreen} />
+            <Text style={styles.howToText}>{t("rewards.howToEarn")}</Text>
+          </View>
+        ) : null}
+
         {unlocked ? (
           <View style={styles.button}>
             <PrimaryButton
@@ -94,4 +102,14 @@ const styles = StyleSheet.create({
   progressFill: { height: "100%", borderRadius: 4 },
   progressText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold, textAlign: "center" },
   button: { alignSelf: "stretch", marginTop: 8 },
+  howTo: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: colors.limeTint,
+  },
+  howToText: { flex: 1, color: colors.inkBlack, fontSize: 13, lineHeight: 18, fontWeight: font.regular },
 });

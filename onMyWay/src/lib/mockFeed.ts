@@ -1,4 +1,5 @@
-// Sample feed until the backend has a posts API. Shape mirrors the posts/places tables.
+// Feed data: posts from the API merged with sample posts. Sample posts use negative ids so they
+// never collide with database ids, and stay local (likes etc. are not sent to the server).
 import { useSyncExternalStore } from "react";
 
 export type PlaceCategory = "beach" | "island" | "mountain" | "city" | "food" | "nature" | "culture";
@@ -11,8 +12,10 @@ export type FeedPost = {
   kind?: PostKind; // default "trip"
   /** Trip headline written by the author (posts made in the app) */
   title?: string;
+  /** Loaded from the API (positive id); sample posts are local only */
+  remote?: boolean;
   /** frame: the avatar frame the author wore when posting (own posts) */
-  author: { name: string; frame?: string };
+  author: { id?: number; name: string; frame?: string };
   place: { name: string; country: string; countryCode: string }; // ISO 3166-1 alpha-2
   category: PlaceCategory;
   imageUrl: string;
@@ -35,6 +38,10 @@ export type FeedPost = {
   verified?: boolean;
   /** Moments posted during an ongoing trip: which day of it */
   tripDay?: number;
+  /** The viewer's own state, as returned by the API */
+  liked?: boolean;
+  saved?: boolean;
+  followingAuthor?: boolean;
 };
 
 export type TripStop = {
@@ -44,6 +51,8 @@ export type TripStop = {
   imageUrl: string;
   latitude: number;
   longitude: number;
+  /** Pin taken from the photo's own GPS */
+  fromPhoto?: boolean;
 };
 
 export type FeedComment = {
@@ -824,10 +833,14 @@ const SOCIAL: Record<number, Partial<FeedPost>> = {
 };
 
 export const MOCK_POSTS: FeedPost[] = [...BASE_POSTS, ...EXTRA_POSTS, ...LIVE_MOMENTS]
-  .map((post) => ({ ...post, ...SOCIAL[post.id] }))
+  .map((post) => ({ ...post, ...SOCIAL[post.id], id: -post.id }))
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 export const postKind = (post: FeedPost): PostKind => post.kind ?? "trip";
+
+/** API posts compare user ids; sample posts only have a name */
+export const isByUser = (post: FeedPost, user?: { id: number; name: string } | null) =>
+  !!user && (post.author.id ? post.author.id === user.id : post.author.name === user.name);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -852,18 +865,25 @@ export function groupMoments(posts: FeedPost[], now = Date.now()): MomentGroup[]
     .sort((a, b) => b.latest.createdAt.localeCompare(a.latest.createdAt));
 }
 
-// Posts created on this device, newest first (until they are saved through the API)
-let myPosts: FeedPost[] = [];
+// Posts from the API, merged with the samples by time
+let remotePosts: FeedPost[] = [];
 let allPosts: FeedPost[] = MOCK_POSTS;
 const feedListeners = new Set<() => void>();
-let nextId = 10_000;
 
-export function addPost(post: Omit<FeedPost, "id">): FeedPost {
-  const created = { ...post, id: nextId++ };
-  myPosts = [created, ...myPosts];
-  allPosts = [...myPosts, ...MOCK_POSTS];
+function rebuildFeed() {
+  allPosts = [...remotePosts, ...MOCK_POSTS].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   feedListeners.forEach((l) => l());
-  return created;
+}
+
+export function setRemotePosts(posts: FeedPost[]) {
+  remotePosts = posts;
+  rebuildFeed();
+}
+
+/** Add or replace one API post (e.g. right after creating it) */
+export function upsertRemotePost(post: FeedPost) {
+  remotePosts = [post, ...remotePosts.filter((p) => p.id !== post.id)];
+  rebuildFeed();
 }
 
 function subscribeFeed(listener: () => void) {
@@ -904,13 +924,16 @@ const ANSWERS: Record<number, { name: string; text: string }[]> = {
   ],
 };
 
-// A few sample comments per post (the full count is in post.comments)
+// A few sample comments per sample post (the full count is in post.comments).
+// API posts load their real comments instead.
 export function getMockComments(post: FeedPost): FeedComment[] {
+  if (post.remote) return [];
+  const sampleId = Math.abs(post.id);
   const count = Math.min(post.comments, 4);
   const postTime = new Date(post.createdAt).getTime();
   return Array.from({ length: count }, (_, i) => {
-    const answers = ANSWERS[post.id];
-    const sample = answers?.[i % answers.length] ?? COMMENT_POOL[(post.id * 3 + i) % COMMENT_POOL.length];
+    const answers = ANSWERS[sampleId];
+    const sample = answers?.[i % answers.length] ?? COMMENT_POOL[(sampleId * 3 + i) % COMMENT_POOL.length];
     const age = (Date.now() - postTime) * ((count - i) / (count + 1));
     return {
       id: `${post.id}-${i}`,

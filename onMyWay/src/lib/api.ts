@@ -42,10 +42,17 @@ async function setSession(session: Session | null) {
 // ---------------------------------------------------------------------------
 // Requests
 // ---------------------------------------------------------------------------
-type RequestOptions = { method?: string; body?: unknown; auth?: boolean };
+type RequestOptions = {
+  method?: string;
+  body?: unknown;
+  auth?: boolean;
+  /** Send body as raw bytes with this Content-Type (photo uploads) */
+  contentType?: string;
+};
 
-async function send(path: string, { method = "GET", body, auth = true }: RequestOptions) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+async function send(path: string, { method = "GET", body, auth = true, contentType }: RequestOptions) {
+  const raw = contentType !== undefined;
+  const headers: Record<string, string> = { "Content-Type": contentType ?? "application/json" };
   if (auth && current) headers.Authorization = `Bearer ${current.accessToken}`;
 
   let res: Response;
@@ -53,7 +60,7 @@ async function send(path: string, { method = "GET", body, auth = true }: Request
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(t("common.networkError"), 0);

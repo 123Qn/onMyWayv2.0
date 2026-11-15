@@ -8,9 +8,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { timeAgo } from "../lib/format";
-import { groupMoments, useFeedPosts, type FeedPost } from "../lib/mockFeed";
+import { groupMoments, isByUser, useFeedPosts, type FeedPost } from "../lib/mockFeed";
 import { useSeenMoments } from "../lib/postStore";
-import { authorFrame, type FrameId } from "../lib/rewards";
+import { useAuthorFrame } from "../lib/rewards";
 import { colors, font } from "../lib/theme";
 import { AvatarFrame } from "../components/AvatarFrame";
 
@@ -48,6 +48,7 @@ export default function MomentsScreen() {
 
   const group = groups[g];
   const moment: FeedPost | undefined = group?.moments[i];
+  const frame = useAuthorFrame(moment?.author ?? { name: "" }, !!moment && isByUser(moment, user));
 
   const progress = useRef(new Animated.Value(0)).current;
   const position = useRef(0);
@@ -144,7 +145,6 @@ export default function MomentsScreen() {
     );
   }
 
-  const frame = (moment.author.frame as FrameId | undefined) ?? authorFrame(moment.author.name);
 
   return (
     <View style={styles.screen}>

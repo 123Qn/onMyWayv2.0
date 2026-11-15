@@ -8,7 +8,12 @@
     "scheme": "onmyway",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +25,10 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.quanh.onMyWay",
       "permissions": [
-        "android.permission.ACCESS_MEDIA_LOCATION"
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "web": {
@@ -56,7 +64,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "onMyWay uses your location to verify photos taken on your trips."
+          "locationWhenInUsePermission": "onMyWay uses your location to verify photos taken on your trips.",
+          "locationAlwaysAndWhenInUsePermission": "onMyWay records your route while a trip is running, even when the screen is off.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],

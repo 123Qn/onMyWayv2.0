@@ -1,22 +1,16 @@
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
 import { compactNumber } from "../../lib/format";
-import {
-  ALL_PROGRESS,
-  BADGES,
-  MY_LEVEL,
-  MY_STATS,
-  UNLOCKED,
-  getBadge,
-  useRewards,
-  type BadgeProgress,
-} from "../../lib/rewards";
+import { BADGES, getBadge, useRewards, type BadgeProgress } from "../../lib/rewards";
+import { postKind, type FeedPost } from "../../lib/mockFeed";
+import { fetchUserPosts, refreshMyProfile } from "../../lib/profileApi";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { BadgeIcon } from "../../components/BadgeIcon";
@@ -26,7 +20,31 @@ import { colors, font, radius } from "../../lib/theme";
 
 export default function ProfileScreen() {
   const { user, signOut, deleteAccount } = useAuth();
-  const { frame, pinned } = useRewards();
+  const { frame, pinned, stats, counts, level, progress, unlocked } = useRewards();
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [gridWidth, setGridWidth] = useState(0);
+
+  // Stats and my posts are fresh every time the tab is opened (e.g. right after posting)
+  const load = useCallback(async () => {
+    if (!user) return;
+    await Promise.all([
+      refreshMyProfile(user.id).catch(() => {}),
+      fetchUserPosts(user.id).then(setPosts, () => {}),
+    ]);
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const pullToRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
   const [busy, setBusy] = useState<"logout" | "delete" | null>(null);
   const [selected, setSelected] = useState<BadgeProgress | null>(null);
 
@@ -71,9 +89,9 @@ export default function ProfileScreen() {
 
   if (!user) return null;
 
-  const progressOf = (id: (typeof pinned)[number]) => ALL_PROGRESS.find((p) => p.badge.id === id)!;
+  const progressOf = (id: (typeof pinned)[number]) => progress.find((p) => p.badge.id === id)!;
   // Newest-looking unlocks first: rarest at the end of each series
-  const recent = [...UNLOCKED].reverse().slice(0, 10);
+  const recent = [...unlocked].reverse().slice(0, 10);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -82,6 +100,9 @@ export default function ProfileScreen() {
         onScroll={onScrollHideTabBar}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={pullToRefresh} colors={[colors.deepGreen]} tintColor={colors.deepGreen} />
+        }
       >
         <View style={styles.hero}>
           <Pressable
@@ -97,28 +118,34 @@ export default function ProfileScreen() {
 
           <Text style={styles.name} numberOfLines={1}>{user.name}</Text>
 
+          <View style={styles.counts}>
+            <Count value={counts.posts} label={t("profile.posts")} />
+            <Count value={counts.followers} label={t("profile.followers")} />
+            <Count value={counts.following} label={t("profile.following")} />
+          </View>
+
           <View style={styles.levelPill}>
-            <Text style={styles.levelText}>{t("rewards.level", { level: MY_LEVEL.level })}</Text>
+            <Text style={styles.levelText}>{t("rewards.level", { level: level.level })}</Text>
             <View style={styles.levelDot} />
-            <Text style={styles.levelTitle}>{t(`rewards.levelTitles.${MY_LEVEL.title}`)}</Text>
+            <Text style={styles.levelTitle}>{t(`rewards.levelTitles.${level.title}`)}</Text>
           </View>
 
           <View style={styles.xpWrap}>
             <View style={styles.xpTrack}>
-              <View style={[styles.xpFill, { width: `${(MY_LEVEL.current / MY_LEVEL.needed) * 100}%` }]} />
+              <View style={[styles.xpFill, { width: `${(level.current / level.needed) * 100}%` }]} />
             </View>
             <Text style={styles.xpText}>
-              {t("rewards.xp", { current: MY_LEVEL.current, next: MY_LEVEL.needed })}
+              {t("rewards.xp", { current: level.current, next: level.needed })}
             </Text>
           </View>
         </View>
 
         <View style={styles.stats}>
-          <Stat value={String(MY_STATS.countries)} label={t("rewards.stats.countries")} />
+          <Stat value={String(stats.countries)} label={t("rewards.stats.countries")} />
           <View style={styles.statDivider} />
-          <Stat value={String(MY_STATS.places)} label={t("rewards.stats.places")} />
+          <Stat value={String(stats.places)} label={t("rewards.stats.places")} />
           <View style={styles.statDivider} />
-          <Stat value={compactNumber(MY_STATS.km)} label={t("rewards.stats.km")} />
+          <Stat value={compactNumber(stats.km)} label={t("rewards.stats.km")} />
         </View>
 
         <View style={styles.card}>
@@ -160,10 +187,10 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Text style={styles.hint}>
-            {t("rewards.collected", { count: UNLOCKED.length, total: BADGES.length })}
+            {t("rewards.collected", { count: unlocked.length, total: BADGES.length })}
           </Text>
           <View style={styles.collectTrack}>
-            <View style={[styles.collectFill, { width: `${(UNLOCKED.length / BADGES.length) * 100}%` }]} />
+            <View style={[styles.collectFill, { width: `${(unlocked.length / BADGES.length) * 100}%` }]} />
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recent}>
             {recent.map((p) => (
@@ -171,6 +198,25 @@ export default function ProfileScreen() {
             ))}
           </ScrollView>
         </Pressable>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t("profile.myPosts")}</Text>
+          {posts.length === 0 ? (
+            <Pressable onPress={() => router.push("/create")} accessibilityRole="button" style={styles.emptyPosts}>
+              <Ionicons name="map" size={28} color={colors.limeGreen} />
+              <Text style={styles.hint}>{t("profile.noPosts")}</Text>
+              <Text style={styles.emptyCta}>{t("profile.firstPost")}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.grid} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+              {gridWidth > 0
+                ? posts.map((post) => (
+                    <PostTile key={post.id} post={post} size={(gridWidth - GRID_GAP * 2) / 3} />
+                  ))
+                : null}
+            </View>
+          )}
+        </View>
 
         <Text style={styles.sectionLabel}>{t("profile.account")}</Text>
         <View style={styles.actions}>
@@ -195,6 +241,47 @@ export default function ProfileScreen() {
 
       <BadgeSheet progress={selected} onClose={() => setSelected(null)} />
     </SafeAreaView>
+  );
+}
+
+function Count({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.count}>
+      <Text style={styles.countValue}>{compactNumber(value)}</Text>
+      <Text style={styles.countLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const KIND_ICON = { trip: "map", moment: "camera", question: "chatbubbles" } as const;
+
+const GRID_GAP = 4;
+
+function PostTile({ post, size }: { post: FeedPost; size: number }) {
+  const kind = postKind(post);
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: "/post/[id]", params: { id: String(post.id) } })}
+      accessibilityRole="button"
+      accessibilityLabel={post.title ?? post.caption}
+      style={({ pressed }) => [styles.tile, { width: size, height: size }, pressed && styles.pressed]}
+    >
+      {post.imageUrl ? (
+        <Image source={post.imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      ) : (
+        <View style={styles.tileText}>
+          <Text style={styles.tileQuestion} numberOfLines={4}>{post.caption}</Text>
+        </View>
+      )}
+      <View style={styles.tileKind}>
+        <Ionicons name={KIND_ICON[kind]} size={12} color={colors.white} />
+      </View>
+      {post.verified ? (
+        <View style={styles.tileVerified}>
+          <Ionicons name="shield-checkmark" size={12} color={colors.limeGreen} />
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -225,6 +312,42 @@ const styles = StyleSheet.create({
     borderColor: colors.softGray,
   },
   name: { color: colors.inkBlack, fontSize: 24, fontWeight: font.bold },
+  counts: { flexDirection: "row", gap: 28, marginBottom: 4 },
+  count: { alignItems: "center" },
+  countValue: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
+  countLabel: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
+  tile: {
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: colors.limeTint,
+  },
+  tileText: { flex: 1, padding: 8, justifyContent: "center" },
+  tileQuestion: { color: colors.deepGreen, fontSize: 12, fontWeight: font.bold },
+  tileKind: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(27,43,40,0.55)",
+  },
+  tileVerified: {
+    position: "absolute",
+    left: 6,
+    bottom: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(27,43,40,0.7)",
+  },
+  emptyPosts: { alignItems: "center", gap: 6, paddingVertical: 16 },
+  emptyCta: { color: colors.deepGreen, fontSize: 14, fontWeight: font.bold },
   levelPill: {
     flexDirection: "row",
     alignItems: "center",
