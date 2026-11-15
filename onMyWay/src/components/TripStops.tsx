@@ -20,7 +20,7 @@ export function TripStops({ stops }: { stops: TripStop[] }) {
 
             <View style={[styles.body, !last && styles.bodySpacing]}>
               <Text style={styles.name}>{stop.name}</Text>
-              <Text style={styles.caption}>{stop.caption}</Text>
+              {stop.caption ? <Text style={styles.caption}>{stop.caption}</Text> : null}
               <Image
                 source={stop.imageUrl}
                 style={styles.image}

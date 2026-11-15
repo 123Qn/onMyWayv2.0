@@ -1,4 +1,6 @@
 // Sample feed until the backend has a posts API. Shape mirrors the posts/places tables.
+import { useSyncExternalStore } from "react";
+
 export type PlaceCategory = "beach" | "island" | "mountain" | "city" | "food" | "nature" | "culture";
 
 /** trip = multi-stop route, moment = a single photo/place, question = asking travelers for tips */
@@ -7,7 +9,10 @@ export type PostKind = "trip" | "moment" | "question";
 export type FeedPost = {
   id: number;
   kind?: PostKind; // default "trip"
-  author: { name: string };
+  /** Trip headline written by the author (posts made in the app) */
+  title?: string;
+  /** frame: the avatar frame the author wore when posting (own posts) */
+  author: { name: string; frame?: string };
   place: { name: string; country: string; countryCode: string }; // ISO 3166-1 alpha-2
   category: PlaceCategory;
   imageUrl: string;
@@ -26,6 +31,8 @@ export type FeedPost = {
   wantToGo?: number;
   /** Travelers who followed this route */
   tookTrip?: number;
+  /** Location confirmed from the photos (in-app camera GPS or photo metadata) */
+  verified?: boolean;
 };
 
 export type TripStop = {
@@ -601,21 +608,21 @@ const EXTRA_POSTS: FeedPost[] = [
 
 // Social details layered on top of the posts
 const SOCIAL: Record<number, Partial<FeedPost>> = {
-  1: { companions: ["Mai Hoang", "Khoa Dang"], likedBy: "Mai Hoang", wantToGo: 1240, tookTrip: 312 },
-  2: { likedBy: "Ava Johnson", wantToGo: 860, tookTrip: 145 },
-  3: { companions: ["Huy Le"], likedBy: "Thao Nguyen", wantToGo: 2310, tookTrip: 604 },
+  1: { companions: ["Mai Hoang", "Khoa Dang"], likedBy: "Mai Hoang", wantToGo: 1240, tookTrip: 312, verified: true },
+  2: { likedBy: "Ava Johnson", wantToGo: 860, tookTrip: 145, verified: true },
+  3: { companions: ["Huy Le"], likedBy: "Thao Nguyen", wantToGo: 2310, tookTrip: 604, verified: true },
   4: { likedBy: "Lucas Silva", wantToGo: 1580, tookTrip: 221 },
-  5: { companions: ["Linh Tran", "Duc Bui", "Thao Nguyen"], likedBy: "Khoa Dang", wantToGo: 940, tookTrip: 178 },
-  6: { likedBy: "Emma Wilson", wantToGo: 1720, tookTrip: 390 },
-  7: { companions: ["Lucas Silva"], likedBy: "Oliver Smith", wantToGo: 3050, tookTrip: 97 },
+  5: { companions: ["Linh Tran", "Duc Bui", "Thao Nguyen"], likedBy: "Khoa Dang", wantToGo: 940, tookTrip: 178, verified: true },
+  6: { likedBy: "Emma Wilson", wantToGo: 1720, tookTrip: 390, verified: true },
+  7: { companions: ["Lucas Silva"], likedBy: "Oliver Smith", wantToGo: 3050, tookTrip: 97, verified: true },
   8: { likedBy: "Duc Bui", wantToGo: 410, tookTrip: 263 },
-  9: { likedBy: "Mai Hoang", wantToGo: 2480, tookTrip: 455 },
+  9: { likedBy: "Mai Hoang", wantToGo: 2480, tookTrip: 455, verified: true },
   10: { companions: ["Noah Kim"], likedBy: "Ava Johnson", wantToGo: 520, tookTrip: 88 },
-  11: { likedBy: "Chloe Martin", wantToGo: 1960, tookTrip: 240 },
-  12: { companions: ["An Pham"], likedBy: "Thao Nguyen", wantToGo: 1330, tookTrip: 286 },
-  13: { likedBy: "Linh Tran", wantToGo: 380 },
+  11: { likedBy: "Chloe Martin", wantToGo: 1960, tookTrip: 240, verified: true },
+  12: { companions: ["An Pham"], likedBy: "Thao Nguyen", wantToGo: 1330, tookTrip: 286, verified: true },
+  13: { likedBy: "Linh Tran", wantToGo: 380, verified: true },
   14: { likedBy: "Minh Nguyen" },
-  15: { companions: ["Chloe Martin"], likedBy: "Noah Kim", wantToGo: 890 },
+  15: { companions: ["Chloe Martin"], likedBy: "Noah Kim", wantToGo: 890, verified: true },
   16: { likedBy: "Noah Kim" },
 };
 
@@ -636,7 +643,30 @@ export const ON_THE_ROAD: { postId: number; day: number }[] = [
   { postId: 4, day: 4 },
 ];
 
-export const getPostById = (id: number) => MOCK_POSTS.find((p) => p.id === id);
+// Posts created on this device, newest first (until they are saved through the API)
+let myPosts: FeedPost[] = [];
+let allPosts: FeedPost[] = MOCK_POSTS;
+const feedListeners = new Set<() => void>();
+let nextId = 10_000;
+
+export function addPost(post: Omit<FeedPost, "id">): FeedPost {
+  const created = { ...post, id: nextId++ };
+  myPosts = [created, ...myPosts];
+  allPosts = [...myPosts, ...MOCK_POSTS];
+  feedListeners.forEach((l) => l());
+  return created;
+}
+
+function subscribeFeed(listener: () => void) {
+  feedListeners.add(listener);
+  return () => {
+    feedListeners.delete(listener);
+  };
+}
+
+export const useFeedPosts = () => useSyncExternalStore(subscribeFeed, () => allPosts);
+
+export const getPostById = (id: number) => allPosts.find((p) => p.id === id);
 
 const COMMENT_POOL: { name: string; text: string }[] = [
   { name: "Mai Hoang", text: "Adding this to my list for next year 😍" },

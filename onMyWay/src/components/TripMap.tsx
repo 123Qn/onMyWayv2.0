@@ -99,8 +99,8 @@ function buildHtml(stops: TripStop[], interactive: boolean) {
   function fit() {
     if (latlngs.length === 1) map.setView(latlngs[0], 13);
     // Full-screen map has overlays at the top (title) and bottom (button)
-    else if (interactive) map.fitBounds(latlngs, { paddingTopLeft: [40, 150], paddingBottomRight: [40, 150] });
-    else map.fitBounds(latlngs, { padding: [40, 40] });
+    else if (interactive) map.fitBounds(latlngs, { paddingTopLeft: [40, 150], paddingBottomRight: [40, 150], maxZoom: 15 });
+    else map.fitBounds(latlngs, { padding: [40, 40], maxZoom: 15 });
   }
   fit();
   // The WebView can report its final size a moment after load

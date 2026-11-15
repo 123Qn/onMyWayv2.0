@@ -26,7 +26,7 @@ import { colors, font, radius } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
 import { AvatarFrame } from "../../components/AvatarFrame";
-import { authorFrame } from "../../lib/rewards";
+import { authorFrame, type FrameId } from "../../lib/rewards";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
@@ -50,13 +50,14 @@ function PostDetail({ postId }: { postId: number }) {
   // A trip shows its route; a moment shows where it was taken; a question has no map
   const hasMap = kind !== "question" && post.stops.length > 0;
   const goLabel = kind === "trip" ? t("post.goOnTrip") : t("post.getDirections");
-  const mapSubtitle = kind === "trip" ? t("post.stopsCount", { count: post.stops.length }) : post.place.country;
+  const mapSubtitle = kind === "trip" ? stopsLabel(post.stops.length) : post.place.country;
 
   // Top bar: buttons stay fixed; its white background and title fade in once the hero scrolls away
   const { width } = useWindowDimensions();
-  const heroHeight = (width * 5) / 4;
   const scrollY = useRef(new Animated.Value(0)).current;
   const barHeight = insets.top + 58;
+  // Questions without a photo start right under the top bar
+  const heroHeight = post.imageUrl ? (width * 5) / 4 : barHeight;
   const barOpacity = scrollY.interpolate({
     inputRange: [heroHeight - barHeight - 80, heroHeight - barHeight - 20],
     outputRange: [0, 1],
@@ -96,7 +97,7 @@ function PostDetail({ postId }: { postId: number }) {
         showsVerticalScrollIndicator={false}
       >
         <Image
-          source={post.imageUrl}
+          source={post.imageUrl || null}
           style={[styles.hero, { height: heroHeight }]}
           contentFit="cover"
           transition={250}
@@ -104,18 +105,19 @@ function PostDetail({ postId }: { postId: number }) {
         />
 
         <View style={styles.sheet}>
-          <Text style={styles.placeName}>{post.place.name}</Text>
+          <Text style={styles.placeName}>{post.title ?? post.place.name}</Text>
           <Text style={styles.country}>
-            {flagEmoji(post.place.countryCode)} {post.place.country}
+            {flagEmoji(post.place.countryCode)} {post.title ? [post.place.name, post.place.country].filter(Boolean).join(", ") : post.place.country}
           </Text>
 
           <View style={styles.chips}>
+            {post.verified ? <Chip icon="shield-checkmark" label={t("create.verifiedHere")} /> : null}
             <Chip icon="pricetag" label={t(`feed.categories.${post.category}`)} />
             {post.tripDays ? <Chip icon="map" label={t("feed.tripDays", { count: post.tripDays })} /> : null}
           </View>
 
           <View style={styles.authorRow}>
-            <AvatarFrame name={post.author.name} frame={authorFrame(post.author.name)} avatarSize={44} />
+            <AvatarFrame name={post.author.name} frame={(post.author.frame as FrameId | undefined) ?? authorFrame(post.author.name)} avatarSize={44} />
             <View style={styles.authorText}>
               <Text style={styles.authorName}>{post.author.name}</Text>
               <Text style={styles.muted} numberOfLines={1}>
@@ -124,6 +126,7 @@ function PostDetail({ postId }: { postId: number }) {
                   : timeAgo(post.createdAt)}
               </Text>
             </View>
+            {user?.name !== post.author.name ? (
             <Pressable
               onPress={toggleFollow}
               accessibilityRole="button"
@@ -135,9 +138,10 @@ function PostDetail({ postId }: { postId: number }) {
                 {isFollowing ? t("post.following") : t("post.follow")}
               </Text>
             </Pressable>
+            ) : null}
           </View>
 
-          <Text style={styles.caption}>{post.caption}</Text>
+          {post.caption ? <Text style={styles.caption}>{post.caption}</Text> : null}
 
           <View style={styles.statsRow}>
             <Pressable
@@ -165,7 +169,7 @@ function PostDetail({ postId }: { postId: number }) {
                 {kind === "trip" ? (
                   <Text style={styles.sectionTitle}>
                     {t("post.tripRoute")}{" "}
-                    <Text style={styles.sectionCount}>· {t("post.stopsCount", { count: post.stops.length })}</Text>
+                    <Text style={styles.sectionCount}>· {stopsLabel(post.stops.length)}</Text>
                   </Text>
                 ) : (
                   <Text style={styles.sectionTitle}>{t("post.location")}</Text>
@@ -237,7 +241,7 @@ function PostDetail({ postId }: { postId: number }) {
         <Animated.View style={[StyleSheet.absoluteFill, styles.topBarBg, { opacity: barOpacity }]} />
         <RoundButton icon="chevron-back" label={t("post.back")} onPress={() => router.back()} />
         <Animated.Text style={[styles.topBarTitle, { opacity: barOpacity }]} numberOfLines={1}>
-          {post.place.name}
+          {post.title ?? post.place.name}
         </Animated.Text>
         <RoundButton icon="paper-plane-outline" label={t("feed.share")} onPress={share} />
         <RoundButton
@@ -254,7 +258,7 @@ function PostDetail({ postId }: { postId: number }) {
           <View style={[styles.mapModalTop, { top: insets.top + 8 }]}>
             <RoundButton icon="close" label={t("post.closeMap")} onPress={() => setMapOpen(false)} />
             <View style={styles.mapModalTitle}>
-              <Text style={styles.mapModalTitleText} numberOfLines={1}>{post.place.name}</Text>
+              <Text style={styles.mapModalTitleText} numberOfLines={1}>{post.title ?? post.place.name}</Text>
               <Text style={styles.mapModalSubtitle}>{mapSubtitle}</Text>
             </View>
           </View>
@@ -294,6 +298,8 @@ function PostDetail({ postId }: { postId: number }) {
     </KeyboardAvoidingView>
   );
 }
+
+const stopsLabel = (n: number) => (n === 1 ? t("post.stopsCountOne") : t("post.stopsCount", { count: n }));
 
 // Google Maps directions along the trip: first stop -> middle stops -> last stop.
 // (The Android Maps app ignores waypoints unless an origin is given.)

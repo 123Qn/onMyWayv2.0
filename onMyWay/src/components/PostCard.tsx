@@ -3,11 +3,12 @@ import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
+import { useAuth } from "../lib/AuthContext";
 import { compactNumber as compact, flagEmoji, timeAgo } from "../lib/format";
 import { getMockComments, postKind, type FeedPost } from "../lib/mockFeed";
 import { useFollowing, usePostState } from "../lib/postStore";
 import { colors, font, radius } from "../lib/theme";
-import { authorFrame } from "../lib/rewards";
+import { authorFrame, type FrameId } from "../lib/rewards";
 import { AvatarFrame } from "./AvatarFrame";
 import { FaceStack } from "./FaceStack";
 import { PhotoCarousel, type Slide } from "./PhotoCarousel";
@@ -15,6 +16,8 @@ import { PhotoCarousel, type Slide } from "./PhotoCarousel";
 function PostCardImpl({ post }: { post: FeedPost }) {
   const { liked, saved, newComments, toggleLike, toggleSave } = usePostState(post.id);
   const { isFollowing, toggleFollow } = useFollowing(post.author.name);
+  const { user } = useAuth();
+  const isMine = user?.name === post.author.name;
   const kind = postKind(post);
   const likes = post.likes + (liked ? 1 : 0);
   const commentCount = post.comments + newComments.length;
@@ -36,19 +39,25 @@ function PostCardImpl({ post }: { post: FeedPost }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <AvatarFrame name={post.author.name} frame={authorFrame(post.author.name)} avatarSize={40} />
+        <AvatarFrame name={post.author.name} frame={(post.author.frame as FrameId | undefined) ?? authorFrame(post.author.name)} avatarSize={40} />
         <View style={styles.headerText}>
           <Text style={styles.authorLine} numberOfLines={1}>
             <Text style={styles.author}>{post.author.name}</Text>
             <Text style={styles.subtitle}> {subtitle}</Text>
           </Text>
           <View style={styles.metaRow}>
-            <Ionicons name="location" size={13} color={colors.tealGreen} />
+            <Ionicons
+              name={post.verified ? "shield-checkmark" : "location"}
+              size={13}
+              color={post.verified ? colors.deepGreen : colors.tealGreen}
+              accessibilityLabel={post.verified ? t("create.verifiedHere") : undefined}
+            />
             <Text style={styles.meta} numberOfLines={1}>
               {post.place.name} · {timeAgo(post.createdAt)}
             </Text>
           </View>
         </View>
+        {!isMine ? (
         <Pressable
           onPress={toggleFollow}
           hitSlop={8}
@@ -60,6 +69,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
             {isFollowing ? t("post.following") : t("post.follow")}
           </Text>
         </Pressable>
+        ) : null}
       </View>
 
       {kind === "question" ? (
@@ -77,7 +87,8 @@ function PostCardImpl({ post }: { post: FeedPost }) {
             />
           </View>
           <Pressable onPress={openPost} accessibilityRole="button" accessibilityLabel={t("feed.openPost")}>
-            <Text style={styles.caption} numberOfLines={3}>{post.caption}</Text>
+            {post.title ? <Text style={styles.postTitle} numberOfLines={2}>{post.title}</Text> : null}
+            {post.caption ? <Text style={styles.caption} numberOfLines={3}>{post.caption}</Text> : null}
           </Pressable>
         </>
       )}
@@ -157,13 +168,16 @@ export const PostCard = memo(PostCardImpl);
 function slidesFor(post: FeedPost): Slide[] {
   const cover = { key: "cover", uri: post.imageUrl, label: post.place.name };
   if (postKind(post) !== "trip") return [cover];
-  return [cover, ...post.stops.map((s) => ({ key: s.id, uri: s.imageUrl, label: s.name }))];
+  // Posts made in the app use their first stop photo as the cover; don't show it twice
+  const stops = post.stops.filter((s) => s.imageUrl !== post.imageUrl);
+  return [cover, ...stops.map((s) => ({ key: s.id, uri: s.imageUrl, label: s.name }))];
 }
 
 function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
   const isTrip = postKind(post) === "trip";
-  const total = isTrip ? post.stops.length + 1 : 1;
-  const stop = index > 0 ? post.stops[index - 1] : undefined;
+  const extraStops = post.stops.filter((s) => s.imageUrl !== post.imageUrl);
+  const total = isTrip ? extraStops.length + 1 : 1;
+  const stop = isTrip && index > 0 ? extraStops[index - 1] : undefined;
 
   return (
     <>
@@ -180,7 +194,7 @@ function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
       {stop ? (
         <View style={[styles.badge, styles.badgeBottom]}>
           <View style={styles.stopNumber}>
-            <Text style={styles.stopNumberText}>{index}</Text>
+            <Text style={styles.stopNumberText}>{post.stops.indexOf(stop) + 1}</Text>
           </View>
           <Text style={styles.badgeText} numberOfLines={1}>{stop.name}</Text>
         </View>
@@ -189,7 +203,7 @@ function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
           <Ionicons name="map" size={13} color={colors.deepGreen} />
           <Text style={styles.badgeText}>
             {post.tripDays ? `${t("feed.tripDays", { count: post.tripDays })} · ` : ""}
-            {t("feed.stopsShort", { count: post.stops.length })}
+            {post.stops.length === 1 ? t("feed.stopsShortOne") : t("feed.stopsShort", { count: post.stops.length })}
           </Text>
         </View>
       ) : null}
@@ -282,6 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.deepGreen,
   },
   stopNumberText: { color: colors.white, fontSize: 11, fontWeight: font.bold },
+  postTitle: { marginTop: 10, paddingHorizontal: 16, color: colors.inkBlack, fontSize: 17, lineHeight: 23, fontWeight: font.bold },
   caption: {
     marginTop: 10,
     paddingHorizontal: 16,

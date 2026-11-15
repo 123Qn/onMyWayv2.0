@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
-import { MOCK_POSTS } from "../../lib/mockFeed";
+import { useFeedPosts } from "../../lib/mockFeed";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors, font } from "../../lib/theme";
 import { useRewards } from "../../lib/rewards";
@@ -19,24 +19,29 @@ import { PostCard } from "../../components/PostCard";
 export default function FeedScreen() {
   const { user } = useAuth();
   const { frame } = useRewards();
+  const allPosts = useFeedPosts();
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [country, setCountry] = useState<string | null>(null);
 
   const inCategory = useMemo(
-    () => (category === "all" ? MOCK_POSTS : MOCK_POSTS.filter((p) => p.category === category)),
-    [category]
+    () => (category === "all" ? allPosts : allPosts.filter((p) => p.category === category)),
+    [allPosts, category]
   );
 
   // Countries with post counts for the current category, most posts first
   const destinations = useMemo(() => {
     const byCode = new Map<string, Destination>();
-    for (const post of MOCK_POSTS) {
+    for (const post of allPosts) {
       const { countryCode: code, country: name } = post.place;
-      if (!byCode.has(code)) byCode.set(code, { code, name, count: 0 });
+      // Unverified posts typed by hand have no country yet
+      if (code && !byCode.has(code)) byCode.set(code, { code, name, count: 0 });
     }
-    for (const post of inCategory) byCode.get(post.place.countryCode)!.count++;
+    for (const post of inCategory) {
+      const entry = byCode.get(post.place.countryCode);
+      if (entry) entry.count++;
+    }
     return [...byCode.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  }, [inCategory]);
+  }, [allPosts, inCategory]);
 
   const posts = useMemo(
     () => (country ? inCategory.filter((p) => p.place.countryCode === country) : inCategory),
