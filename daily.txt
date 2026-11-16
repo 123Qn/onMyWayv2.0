@@ -1,0 +1,58 @@
+onMyWay - NHAT KY LAM VIEC
+==========================
+
+=== 2026-11-16 ===
+
+TRANG THAI CUOI NGAY
+- Commit moi nhat: 031dfdc "Fix hardcode DB" (gom trip mode, tab Trips, seed demo, bo du lieu mock).
+- CHUA COMMIT (3 file): moment cung mo ban do trong app + nhan "Destination" + thoi gian dang "13h 58m"
+    onMyWay/src/app/post/[id].tsx
+    onMyWay/src/app/trip/[id].tsx
+    onMyWay/src/i18n/locales/en.ts
+- Tren emulator dang con 1 chuyen "Saigon" (trip_runs id 7) dang Recording, da toi dich 0.726 km.
+  Bam End trip de luu (hoac de nguyen cung khong sao).
+
+DA LAM HOM NAY
+1. Trip mode (ghi hanh trinh GPS) - hoan thien phan dang do
+   - Man hinh app/trip/[id].tsx: ban do truc tiep, duong di that (OSRM qua GET /route),
+     diem dung tiep theo, km / so diem / thoi gian, Start / End / Switch trip.
+   - Ve lai duong khi toi 1 diem dung hoac lech > 300 m.
+   - lib/tripRecorder.ts: GPS Accuracy.High; ban dev gui diem moi 15 s (ban that 3 phut);
+     ban dev chap nhan vi tri gia lap (mocked) de test, ban that van bo.
+   - Backend cho phep diem GPS dau tien som hon luc Start toi 2 phut.
+2. Tab Trips (app/(tabs)/index2.tsx) - truoc la man hinh mau
+   - Chuyen dang chay, tong ket (so chuyen, tong km), "Want to go", "Your trips" (lich su).
+   - API moi: GET /posts/saved, GET /trip-runs (chuyen da ket thuc + post).
+   - Want to go ghep danh sach server + bookmark vua bam (useSaveOverrides trong lib/postStore.ts).
+3. Du lieu demo trong Postgres + bo toan bo hard code
+   - Seed: npm run db:seed:demo  (Backend/src/db/seedDemo.js, du lieu Backend/src/db/demo/posts.json)
+     10 user test1..test10@gmail.com, mat khau: Test@1234
+     (VN, AU, IT, KR, FR, ID, DE, BR, GB, US), 51 bai (21 trip, 20 moment, 10 question),
+     125 comment, like, save, follow. Chay lai an toan (user giu id, bai tao lai).
+     Moment dat trong 24h gan nhat -> chay lai seed de "On the road now" co du lieu moi.
+   - Anh la link Unsplash luu trong bang media (media.service publicUrl tra nguyen link http).
+   - API post tra them: author.frame, likedBy, commenters, tookTrip (tu du lieu that).
+   - App: xoa lib/mockFeed.ts, thay bang lib/feed.ts (chi type + store). Bo AUTHOR_FRAMES,
+     companions, bestTime, sample note, moi nhanh "remote"/bai mau.
+4. Moment cung mo ban do trong app (chua commit)
+   - Nut "Get directions" khong mo Google Maps nua ma mo /trip/[id]; 1 dia diem thi ve duong
+     tu vi tri hien tai toi do. Link Google Maps van o trong man hinh trip.
+5. Da test tren emulator: gia lap GPS di 808 m toi dich -> server ghi 0.726 km, 1/1 diem.
+
+CACH CHAY LAI MOI TRUONG
+- Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
+- cd Backend && npm run dev                       (API cong 3000)
+- cd onMyWay && npx expo start                    (Metro 8081)
+- Emulator: emulator -avd Pixel_4 ; adb reverse tcp:8081 tcp:8081
+- App goi API qua EXPO_PUBLIC_API_URL trong onMyWay/.env.local = http://192.168.0.12:3000/api
+  (doi neu IP may thay doi: ipconfig)
+- Gia lap di chuyen: adb emu geo fix <lng> <lat>  (kinh do truoc). Server bo diem > 250 km/h,
+  nen chi test quang duong ngan (vai km) hoac di cham.
+
+VIEC TIEP THEO
+- Commit 3 file con lai.
+- Tab Community (app/(tabs)/index3.tsx) van la man hinh mau -> lam tiep.
+- An cac chuyen 0 km va chua toi diem nao trong "Your trips" (de xuat, chua lam).
+- Chua lint duoc: "npx expo lint" tu cai ESLint vao project (da hoan tac). Neu muon lint
+  thi can them eslint vao project mot cach chu dong.
+- Tai khoan "A" (user cu, khong phai demo) van con bai/chuyen cu trong DB.

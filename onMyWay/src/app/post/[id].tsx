@@ -3,7 +3,6 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
-  Linking,
   Modal,
   Pressable,
   Share,
@@ -20,7 +19,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { compactNumber, flagEmoji, timeAgo } from "../../lib/format";
-import { getPostById, isByUser, postKind, type FeedComment, type TripStop } from "../../lib/feed";
+import { getPostById, isByUser, postKind, type FeedComment } from "../../lib/feed";
 import { fetchComments } from "../../lib/postsApi";
 import { useFollowing, usePostState } from "../../lib/postStore";
 import { useTripRecorder } from "../../lib/tripRecorder";
@@ -56,13 +55,11 @@ function PostDetail({ postId }: { postId: number }) {
   const hasMap = kind !== "question" && post.stops.length > 0;
   const recorder = useTripRecorder();
   const tripRunning = recorder.run?.postId === post.id;
-  const goLabel = kind === "trip" ? (tripRunning ? t("trip.continue") : t("post.goOnTrip")) : t("post.getDirections");
-  // Trips open the in-app trip map; a single place still opens Google Maps
+  const goLabel = tripRunning ? t("trip.continue") : kind === "trip" ? t("post.goOnTrip") : t("post.getDirections");
+  // Trips and single places both open the in-app map, so the kilometres get recorded
   const go = () => {
-    if (kind === "trip") {
-      setMapOpen(false);
-      router.push({ pathname: "/trip/[id]", params: { id: String(post.id) } });
-    } else openDirections(post.stops);
+    setMapOpen(false);
+    router.push({ pathname: "/trip/[id]", params: { id: String(post.id) } });
   };
   const mapSubtitle = kind === "trip" ? stopsLabel(post.stops.length) : post.place.country;
 
@@ -309,21 +306,6 @@ function PostDetail({ postId }: { postId: number }) {
 }
 
 const stopsLabel = (n: number) => (n === 1 ? t("post.stopsCountOne") : t("post.stopsCount", { count: n }));
-
-// Google Maps directions along the trip: first stop -> middle stops -> last stop.
-// (The Android Maps app ignores waypoints unless an origin is given.)
-// A single-stop trip gets directions from the user's current location.
-function openDirections(stops: TripStop[]) {
-  if (stops.length === 0) return;
-  const coord = (s: TripStop) => encodeURIComponent(`${s.latitude},${s.longitude}`);
-  let url = `https://www.google.com/maps/dir/?api=1&destination=${coord(stops[stops.length - 1])}`;
-  if (stops.length > 1) {
-    url += `&origin=${coord(stops[0])}`;
-    const middle = stops.slice(1, -1);
-    if (middle.length) url += `&waypoints=${middle.map(coord).join(encodeURIComponent("|"))}`;
-  }
-  Linking.openURL(url).catch(() => Alert.alert(t("post.mapsError")));
-}
 
 function CommentRow({ comment }: { comment: FeedComment }) {
   return (

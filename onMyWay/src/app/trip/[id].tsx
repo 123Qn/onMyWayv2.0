@@ -80,7 +80,8 @@ function TripMode({ post }: { post: FeedPost }) {
     return () => clearInterval(timer);
   }, [activeHere]);
 
-  // Road route: from you through the stops left once the trip runs, otherwise through all stops.
+  // Road route: from you through the stops left once the trip runs, otherwise through all stops
+  // (a single place is routed from where you are).
   // Redrawn when a stop is reached or when you are more than 300 m off the drawn route.
   const lastRouteAt = useRef(0);
   const routeKey = useRef("");
@@ -101,10 +102,12 @@ function TripMode({ post }: { post: FeedPost }) {
 
   useEffect(() => {
     const stops = activeHere ? remaining : post.stops;
-    const from = activeHere && position ? [position] : [];
+    const from = (activeHere || stops.length < 2) && position ? [position] : [];
     const points = [...from, ...stops];
     if (points.length < 2) {
+      // Nothing to route yet (e.g. a single place before your location is known)
       setRoute(null);
+      setRouteFailed(stops.length > 0 && !!position);
       return;
     }
     const key = `${activeHere}|${stops.map((s) => s.id).join(",")}`;
@@ -214,12 +217,12 @@ function TripMode({ post }: { post: FeedPost }) {
               <Text style={styles.nextNumber}>{post.stops.indexOf(nextStop) + 1}</Text>
             </View>
             <View style={styles.flex}>
-              <Text style={styles.nextLabel}>{activeHere ? t("trip.nextStop") : t("trip.firstStop")}</Text>
+              <Text style={styles.nextLabel}>{post.stops.length === 1 ? t("trip.destination") : activeHere ? t("trip.nextStop") : t("trip.firstStop")}</Text>
               <Text style={styles.nextName} numberOfLines={1}>{nextStop.name}</Text>
             </View>
             {route ? (
               <Text style={styles.eta}>
-                {t("trip.routeSummary", { km: route.distanceKm.toFixed(1), min: route.durationMin })}
+                {t("trip.routeSummary", { km: route.distanceKm.toFixed(1), time: formatElapsed(route.durationMin * 60_000) })}
               </Text>
             ) : routeFailed ? (
               <Text style={styles.etaMuted}>{t("trip.noRoute")}</Text>
