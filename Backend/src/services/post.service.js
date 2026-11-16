@@ -196,6 +196,9 @@ const setSave = async (user, postId, on) => {
 const serializeComment = (row) => ({
     id: String(row.id),
     author: { id: row.author_id, name: row.author_name },
+    // Replies point at their thread's top-level comment and at the person they answer
+    parentId: row.parent_id ? String(row.parent_id) : null,
+    replyTo: row.reply_to_id ? { id: row.reply_to_id, name: row.reply_to_name } : null,
     text: row.body,
     createdAt: row.created_at.toISOString(),
 });
@@ -209,14 +212,30 @@ const addComment = async (user, postId, body) => {
     const { id, owner, kind } = await requirePost(postId);
     const comment = text(body?.text, 2000);
     if (!comment) throw httpError(400, "Write a comment first.");
-    const row = await postModel.addComment(id, user.id, comment);
-    await notificationModel.create({
-        userId: owner,
-        actorId: user.id,
-        type: kind === "question" ? "answer" : "comment",
-        postId: id,
-        commentId: row.id,
-    });
+
+    // A reply joins the thread of the comment it answers (replies to replies stay in the same thread)
+    let reply = {};
+    const replyingTo = body?.parentId != null ? toId(body.parentId) : null;
+    if (body?.parentId != null) {
+        const parent = replyingTo && (await postModel.findComment(id, replyingTo));
+        if (!parent) throw httpError(404, "That comment is no longer available.");
+        reply = { parentId: parent.parent_id ?? parent.id, replyToUserId: parent.user_id };
+    }
+
+    const row = await postModel.addComment(id, user.id, comment, reply);
+    // The person replied to hears about it; the post owner hears about every comment (once)
+    if (reply.replyToUserId) {
+        await notificationModel.create({ userId: reply.replyToUserId, actorId: user.id, type: "reply", postId: id, commentId: row.id });
+    }
+    if (owner !== reply.replyToUserId) {
+        await notificationModel.create({
+            userId: owner,
+            actorId: user.id,
+            type: kind === "question" ? "answer" : "comment",
+            postId: id,
+            commentId: row.id,
+        });
+    }
     return serializeComment(row);
 };
 

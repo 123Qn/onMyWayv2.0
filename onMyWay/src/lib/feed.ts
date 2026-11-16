@@ -53,7 +53,10 @@ export type TripStop = {
 
 export type FeedComment = {
   id: string;
-  author: { name: string };
+  author: { id: number; name: string };
+  /** Replies: the thread's top-level comment, and the person being answered (@name) */
+  parentId?: string | null;
+  replyTo?: { id: number; name: string } | null;
   text: string;
   createdAt: string; // ISO
 };

@@ -15,6 +15,7 @@ const TYPE_ICON = {
   like: { name: "heart", color: colors.heart },
   comment: { name: "chatbubble", color: colors.tealGreen },
   answer: { name: "chatbubbles", color: colors.deepGreen },
+  reply: { name: "return-down-forward", color: colors.tealGreen },
   follow: { name: "person-add", color: colors.skyBlue },
 } as const;
 
@@ -89,7 +90,9 @@ function NotificationRow({ item }: { item: AppNotification }) {
         ? t("notifications.comment", { name: item.actor.name })
         : item.type === "answer"
           ? t("notifications.answer", { name: item.actor.name })
-          : t("notifications.follow", { name: item.actor.name });
+          : item.type === "reply"
+            ? t("notifications.reply", { name: item.actor.name })
+            : t("notifications.follow", { name: item.actor.name });
   // Bold the actor's name inside the translated sentence
   const [before, after] = text.includes(item.actor.name) ? text.split(item.actor.name) : [text, ""];
 

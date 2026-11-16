@@ -132,8 +132,9 @@ const setSave = (postId, userId, on) => setFlag("post_saves", postId, userId, on
 
 const listComments = async (postId) => {
   const { rows } = await pool.query(
-    `SELECT c.id, c.body, c.created_at, u.id AS author_id, u.name AS author_name
-     FROM comments c JOIN users u ON u.id = c.user_id
+    `SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name,
+            r.id AS reply_to_id, r.name AS reply_to_name
+     FROM comments c JOIN users u ON u.id = c.user_id LEFT JOIN users r ON r.id = c.reply_to_user_id
      WHERE c.post_id = $1
      ORDER BY c.created_at`,
     [postId]
@@ -141,12 +142,25 @@ const listComments = async (postId) => {
   return rows;
 };
 
-const addComment = async (postId, userId, body) => {
+// The comment being replied to: its author and which thread it belongs to
+const findComment = async (postId, commentId) => {
   const { rows } = await pool.query(
-    `WITH c AS (INSERT INTO comments (post_id, user_id, body) VALUES ($1, $2, $3) RETURNING *)
-     SELECT c.id, c.body, c.created_at, u.id AS author_id, u.name AS author_name
-     FROM c JOIN users u ON u.id = c.user_id`,
-    [postId, userId, body]
+    `SELECT id, user_id, parent_id FROM comments WHERE id = $1 AND post_id = $2`,
+    [commentId, postId]
+  );
+  return rows[0];
+};
+
+const addComment = async (postId, userId, body, { parentId = null, replyToUserId = null } = {}) => {
+  const { rows } = await pool.query(
+    `WITH c AS (
+       INSERT INTO comments (post_id, user_id, body, parent_id, reply_to_user_id) VALUES ($1, $2, $3, $4, $5)
+       RETURNING *
+     )
+     SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name,
+            r.id AS reply_to_id, r.name AS reply_to_name
+     FROM c JOIN users u ON u.id = c.user_id LEFT JOIN users r ON r.id = c.reply_to_user_id`,
+    [postId, userId, body, parentId, replyToUserId]
   );
   return rows[0];
 };
@@ -174,6 +188,7 @@ module.exports = {
   setLike,
   setSave,
   listComments,
+  findComment,
   addComment,
   setFollow,
 };

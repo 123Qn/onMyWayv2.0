@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import {
   Alert,
   Animated,
@@ -48,6 +48,10 @@ function PostDetail({ postId }: { postId: number }) {
   const [loadedComments, setLoadedComments] = useState<FeedComment[]>([]);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
+  // The comment being answered from the composer, and threads whose older replies are shown
+  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const { isFollowing, toggleFollow } = useFollowing(post.author, post.followingAuthor);
   const kind = postKind(post);
@@ -86,6 +90,23 @@ function PostDetail({ postId }: { postId: number }) {
   }, [loadedComments, newComments]);
   const commentCount = Math.max(post.comments + newComments.length, comments.length);
 
+  // Top-level comments in order, each with its replies underneath (a reply whose thread is gone shows on its own)
+  const threads = useMemo(() => {
+    const ids = new Set(comments.map((c) => c.id));
+    const replies = new Map<string, FeedComment[]>();
+    const roots: FeedComment[] = [];
+    for (const c of comments) {
+      if (c.parentId && ids.has(c.parentId)) replies.set(c.parentId, [...(replies.get(c.parentId) ?? []), c]);
+      else roots.push(c);
+    }
+    return roots.map((root) => ({ root, replies: replies.get(root.id) ?? [] }));
+  }, [comments]);
+
+  const startReply = (c: FeedComment) => {
+    setReplyTo({ id: c.id, name: c.author.name });
+    inputRef.current?.focus();
+  };
+
   const share = () => {
     Share.share({ message: `${post.place.name}, ${post.place.country} — ${post.caption}` }).catch(() => {});
   };
@@ -95,8 +116,12 @@ function PostDetail({ postId }: { postId: number }) {
     if (!text || !user || sending) return;
     setSending(true);
     try {
-      await addComment(text);
+      await addComment(text, replyTo?.id);
+      // Keep the thread I just answered open so my reply is visible
+      const thread = replyTo && threads.find((th) => th.root.id === replyTo.id || th.replies.some((r) => r.id === replyTo.id));
+      if (thread) setExpanded((prev) => new Set(prev).add(thread.root.id));
       setDraft("");
+      setReplyTo(null);
     } catch (e) {
       Alert.alert(e instanceof Error ? e.message : t("common.genericError"));
     } finally {
@@ -238,7 +263,40 @@ function PostDetail({ postId }: { postId: number }) {
           {comments.length === 0 ? (
             <Text style={styles.muted}>{t("post.noComments")}</Text>
           ) : (
-            comments.map((c) => <CommentRow key={c.id} comment={c} />)
+            threads.map(({ root, replies }) => {
+              // Long conversations show the latest replies; older ones are one tap away
+              const open = expanded.has(root.id) || replies.length <= VISIBLE_REPLIES;
+              const shown = open ? replies : replies.slice(-VISIBLE_REPLIES);
+              const hidden = replies.length - shown.length;
+              return (
+                <View key={root.id}>
+                  <CommentRow comment={root} onReply={startReply} />
+                  {hidden > 0 ? (
+                    <Pressable
+                      onPress={() => setExpanded((prev) => new Set(prev).add(root.id))}
+                      accessibilityRole="button"
+                      hitSlop={6}
+                      style={styles.moreReplies}
+                    >
+                      <View style={styles.moreRepliesLine} />
+                      <Text style={styles.moreRepliesText}>
+                        {hidden === 1 ? t("post.viewRepliesOne") : t("post.viewReplies", { count: hidden })}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {shown.map((reply) => (
+                    <CommentRow
+                      key={reply.id}
+                      comment={reply}
+                      onReply={startReply}
+                      reply
+                      // @name only when it answers someone other than the thread starter
+                      mention={reply.replyTo && reply.replyTo.id !== root.author.id ? reply.replyTo.name : undefined}
+                    />
+                  ))}
+                </View>
+              );
+            })
           )}
         </View>
       </Animated.ScrollView>
@@ -274,13 +332,26 @@ function PostDetail({ postId }: { postId: number }) {
         </View>
       </Modal>
 
+      {replyTo ? (
+        <View style={styles.replyBar}>
+          <Text style={styles.replyBarText} numberOfLines={1}>
+            {t("post.replyingTo")} <Text style={styles.replyBarName}>{replyTo.name}</Text>
+          </Text>
+          <Pressable onPress={() => setReplyTo(null)} accessibilityRole="button" accessibilityLabel={t("post.cancelReply")} hitSlop={10}>
+            <Ionicons name="close" size={18} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      ) : null}
       <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         {user ? <Avatar name={user.name} size={36} /> : null}
         <TextInput
+          ref={inputRef}
           style={styles.input}
           value={draft}
           onChangeText={setDraft}
-          placeholder={kind === "question" ? t("post.addAnswer") : t("post.addComment")}
+          placeholder={
+            replyTo ? t("post.replyPlaceholder", { name: replyTo.name }) : kind === "question" ? t("post.addAnswer") : t("post.addComment")
+          }
           placeholderTextColor={colors.textMuted}
           selectionColor={colors.tealGreen}
           cursorColor={colors.deepGreen}
@@ -305,18 +376,36 @@ function PostDetail({ postId }: { postId: number }) {
   );
 }
 
+const VISIBLE_REPLIES = 2;
+
 const stopsLabel = (n: number) => (n === 1 ? t("post.stopsCountOne") : t("post.stopsCount", { count: n }));
 
-function CommentRow({ comment }: { comment: FeedComment }) {
+function CommentRow({
+  comment,
+  onReply,
+  reply = false,
+  mention,
+}: {
+  comment: FeedComment;
+  onReply: (comment: FeedComment) => void;
+  reply?: boolean;
+  mention?: string;
+}) {
   return (
-    <View style={styles.comment}>
-      <Avatar name={comment.author.name} size={34} />
+    <View style={[styles.comment, reply && styles.replyRow]}>
+      <Avatar name={comment.author.name} size={reply ? 28 : 34} />
       <View style={styles.commentBody}>
         <View style={styles.commentHeader}>
           <Text style={styles.commentAuthor}>{comment.author.name}</Text>
           <Text style={styles.commentTime}>{timeAgo(comment.createdAt)}</Text>
         </View>
-        <Text style={styles.commentText}>{comment.text}</Text>
+        <Text style={styles.commentText}>
+          {mention ? <Text style={styles.mention}>@{mention} </Text> : null}
+          {comment.text}
+        </Text>
+        <Pressable onPress={() => onReply(comment)} accessibilityRole="button" hitSlop={8} style={styles.replyButton}>
+          <Text style={styles.replyButtonText}>{t("post.reply")}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -514,6 +603,25 @@ const styles = StyleSheet.create({
   commentAuthor: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
   commentTime: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular },
   commentText: { color: colors.inkBlack, fontSize: 15, lineHeight: 21, fontWeight: font.regular },
+  mention: { color: colors.deepGreen, fontWeight: font.bold },
+  replyRow: { marginLeft: 46, paddingVertical: 6 },
+  replyButton: { alignSelf: "flex-start", paddingTop: 2 },
+  replyButtonText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold },
+  moreReplies: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: 46, paddingVertical: 6 },
+  moreRepliesLine: { width: 24, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.textMuted },
+  moreRepliesText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold },
+  replyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.softGray,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  replyBarText: { flex: 1, color: colors.textMuted, fontSize: 13 },
+  replyBarName: { color: colors.inkBlack, fontWeight: font.bold },
 
   composer: {
     flexDirection: "row",

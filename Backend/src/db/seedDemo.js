@@ -39,6 +39,13 @@ const COMMENTS = [
   "Okay, booking flights tonight.",
 ];
 
+const REPLIES = [
+  "Thanks, that's really helpful! 🙏",
+  "Anytime! Let me know if you need more tips.",
+  "Will do, booking it this week 😄",
+  "+1 to this, did exactly the same last year.",
+];
+
 // Deterministic randomness so every run produces the same data
 let seed = 20261116;
 const random = () => {
@@ -124,9 +131,35 @@ async function main() {
         ? post.data.answers.map((a) => ({ userId: userId(a.author), text: a.text }))
         : pick(COMMENTS, between(1, 4)).map((text, i) => ({ userId: others[(post.id * 3 + i) % others.length], text }));
       const age = Date.now() - post.created_at.getTime();
+      const top = [];
       for (const [i, c] of lines.entries()) {
-        const at = new Date(post.created_at.getTime() + (age * (i + 1)) / (lines.length + 1));
-        await db.query(`INSERT INTO comments (post_id, user_id, body, created_at) VALUES ($1, $2, $3, $4)`, [post.id, c.userId, c.text, at]);
+        const at = new Date(post.created_at.getTime() + (age * (i + 1)) / (lines.length + 2));
+        const { rows } = await db.query(
+          `INSERT INTO comments (post_id, user_id, body, created_at) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [post.id, c.userId, c.text, at]
+        );
+        top.push({ id: rows[0].id, userId: c.userId, at });
+        commentCount++;
+      }
+
+      // A back-and-forth under the first answer of every question (and some other posts):
+      // author -> answerer -> author again -> someone else joins in
+      if (!post.data.answers && post.id % 3 !== 0) continue;
+      const first = top[0];
+      const third = others.find((id) => id !== first.userId);
+      const thread = [
+        { userId: post.author, to: first.userId, text: REPLIES[0] },
+        { userId: first.userId, to: post.author, text: REPLIES[1] },
+        { userId: post.author, to: first.userId, text: REPLIES[2] },
+        { userId: third, to: first.userId, text: REPLIES[3] },
+      ];
+      const span = Date.now() - first.at.getTime();
+      for (const [i, r] of thread.entries()) {
+        const at = new Date(first.at.getTime() + (span * (i + 1)) / (thread.length + 1));
+        await db.query(
+          `INSERT INTO comments (post_id, user_id, body, parent_id, reply_to_user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [post.id, r.userId, r.text, first.id, r.to, at]
+        );
         commentCount++;
       }
     }

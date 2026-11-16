@@ -83,6 +83,12 @@ export const en = {
   post: {
     back: "Back",
     notFound: "This post is no longer available",
+    reply: "Reply",
+    replyingTo: "Replying to",
+    replyPlaceholder: "Reply to {{name}}…",
+    cancelReply: "Cancel reply",
+    viewReplies: "View {{count}} more replies",
+    viewRepliesOne: "View 1 more reply",
     tripRoute: "Trip route",
     stopsCount: "{{count}} stops",
     stopsCountOne: "1 stop",
@@ -220,6 +226,7 @@ export const en = {
     like: "{{name}} liked your post",
     comment: "{{name}} commented on your post",
     answer: "{{name}} answered your question",
+    reply: "{{name}} replied to your comment",
     follow: "{{name}} started following you",
   },
   celebrate: {

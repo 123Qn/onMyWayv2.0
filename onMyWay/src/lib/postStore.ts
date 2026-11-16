@@ -89,8 +89,9 @@ export function usePostState(post: FeedPost) {
     toggleLike: () => toggleFlag(likeOverride, post, liked, "like"),
     toggleSave: () => toggleFlag(saveOverride, post, saved, "save"),
     /** Throws when the server rejects the comment */
-    addComment: async (text: string) => {
-      const comment = await apiFetch<FeedComment>(`/posts/${post.id}/comments`, { method: "POST", body: { text } });
+    /** parentId: the comment being replied to */
+    addComment: async (text: string, parentId?: string) => {
+      const comment = await apiFetch<FeedComment>(`/posts/${post.id}/comments`, { method: "POST", body: { text, parentId } });
       addedComments.set(post.id, [...(addedComments.get(post.id) ?? []), comment]);
       emit();
     },
