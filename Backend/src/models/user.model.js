@@ -2,7 +2,7 @@ const pool = require("../config/database");
 
 const findUserByEmail = async (email) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, password_hash AS password
+    `SELECT id, name, email, avatar_url, password_hash AS password
      FROM users WHERE email = $1`,
     [email.toLowerCase()]
   );
@@ -12,7 +12,7 @@ const findUserByEmail = async (email) => {
 const findUserById = async (id) => {
   if (!Number.isInteger(Number(id))) return undefined;
   const { rows } = await pool.query(
-    `SELECT id, name, email, password_hash AS password
+    `SELECT id, name, email, avatar_url, password_hash AS password
      FROM users WHERE id = $1`,
     [id]
   );

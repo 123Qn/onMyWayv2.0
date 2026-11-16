@@ -132,7 +132,7 @@ const setSave = (postId, userId, on) => setFlag("post_saves", postId, userId, on
 
 const listComments = async (postId) => {
   const { rows } = await pool.query(
-    `SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name,
+    `SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar,
             r.id AS reply_to_id, r.name AS reply_to_name
      FROM comments c JOIN users u ON u.id = c.user_id LEFT JOIN users r ON r.id = c.reply_to_user_id
      WHERE c.post_id = $1
@@ -157,7 +157,7 @@ const addComment = async (postId, userId, body, { parentId = null, replyToUserId
        INSERT INTO comments (post_id, user_id, body, parent_id, reply_to_user_id) VALUES ($1, $2, $3, $4, $5)
        RETURNING *
      )
-     SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name,
+     SELECT c.id, c.body, c.created_at, c.parent_id, u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar,
             r.id AS reply_to_id, r.name AS reply_to_name
      FROM c JOIN users u ON u.id = c.user_id LEFT JOIN users r ON r.id = c.reply_to_user_id`,
     [postId, userId, body, parentId, replyToUserId]

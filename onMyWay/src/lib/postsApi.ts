@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { apiFetch } from "./api";
-import { setFeedPosts, upsertFeedPost, type FeedComment, type FeedPost, type PlaceCategory, type PostKind } from "./feed";
+import { appendFeedPosts, forgetPost, oldestFeedPost, setFeedPosts, upsertFeedPost, type FeedComment, type FeedPost, type PlaceCategory, type PostKind } from "./feed";
 import { resetRemoteOverrides } from "./postStore";
 import { refreshMyProfile } from "./profileApi";
 
@@ -43,12 +43,32 @@ export async function createPost(input: NewPost) {
   return post;
 }
 
-/** Reload the latest posts from the server into the feed */
+const PAGE = 20;
+
+/** Reload the latest posts from the server into the feed; returns whether older posts may exist */
 export async function refreshFeed() {
-  const posts = await apiFetch<FeedPost[]>("/posts?limit=50");
+  const posts = await apiFetch<FeedPost[]>(`/posts?limit=${PAGE}`);
   // Fresh counts from the server replace the optimistic local ones
   resetRemoteOverrides();
   setFeedPosts(posts);
+  return posts.length === PAGE;
+}
+
+/** The next page of older posts; returns whether there may be more after it */
+export async function loadMoreFeed() {
+  const oldest = oldestFeedPost();
+  if (!oldest) return refreshFeed();
+  const posts = await apiFetch<FeedPost[]>(`/posts?limit=${PAGE}&before=${encodeURIComponent(oldest.createdAt)}`);
+  appendFeedPosts(posts);
+  return posts.length === PAGE;
+}
+
+/** Delete my post; my stats are refreshed since they may change */
+export async function deletePost(postId: number, myId?: number) {
+  const post = await apiFetch<null>(`/posts/${postId}`, { method: "DELETE" });
+  forgetPost(postId);
+  if (myId) refreshMyProfile(myId).catch(() => {});
+  return post;
 }
 
 export const fetchComments = (postId: number) => apiFetch<FeedComment[]>(`/posts/${postId}/comments`);

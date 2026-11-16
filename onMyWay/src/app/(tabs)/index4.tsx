@@ -1,26 +1,27 @@
 import { useCallback, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
-import { compactNumber } from "../../lib/format";
+import { compactNumber, flagEmoji } from "../../lib/format";
+import { openFollows } from "../../lib/communityApi";
 import { BADGES, getBadge, useRewards, type BadgeProgress } from "../../lib/rewards";
-import { postKind, type FeedPost } from "../../lib/feed";
+import type { FeedPost } from "../../lib/feed";
 import { fetchUserPosts, refreshMyProfile } from "../../lib/profileApi";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { BadgeIcon } from "../../components/BadgeIcon";
 import { BadgeSheet } from "../../components/BadgeSheet";
+import { PostTile, GRID_GAP } from "../../components/PostTile";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { colors, font, radius } from "../../lib/theme";
 
 export default function ProfileScreen() {
   const { user, signOut, deleteAccount } = useAuth();
-  const { frame, pinned, stats, counts, level, progress, unlocked } = useRewards();
+  const { frame, pinned, stats, counts, level, progress, unlocked, about } = useRewards();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [gridWidth, setGridWidth] = useState(0);
@@ -110,18 +111,34 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("profile.editFrame")}
           >
-            <AvatarFrame name={user.name} frame={frame} avatarSize={96} />
+            <AvatarFrame name={user.name} frame={frame} avatarSize={96} uri={about.avatarUrl ?? user.avatarUrl} />
             <View style={styles.editFrame}>
               <Ionicons name="color-palette" size={16} color={colors.white} />
             </View>
           </Pressable>
 
           <Text style={styles.name} numberOfLines={1}>{user.name}</Text>
+          {about.country ? (
+            <Text style={styles.country}>
+              {about.countryCode ? `${flagEmoji(about.countryCode)} ` : ""}
+              {about.country}
+            </Text>
+          ) : null}
+          {about.bio ? <Text style={styles.bio}>{about.bio}</Text> : null}
+
+          <Pressable
+            onPress={() => router.push("/edit-profile")}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.editProfile, pressed && styles.pressed]}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.deepGreen} />
+            <Text style={styles.editProfileText}>{t("editProfile.title")}</Text>
+          </Pressable>
 
           <View style={styles.counts}>
             <Count value={counts.posts} label={t("profile.posts")} />
-            <Count value={counts.followers} label={t("profile.followers")} />
-            <Count value={counts.following} label={t("profile.following")} />
+            <Count value={counts.followers} label={t("profile.followers")} onPress={() => openFollows(user.id, user.name, "followers")} />
+            <Count value={counts.following} label={t("profile.following")} onPress={() => openFollows(user.id, user.name, "following")} />
           </View>
 
           <View style={styles.levelPill}>
@@ -244,43 +261,11 @@ export default function ProfileScreen() {
   );
 }
 
-function Count({ value, label }: { value: number; label: string }) {
+function Count({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
   return (
-    <View style={styles.count}>
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? "button" : undefined} hitSlop={6} style={styles.count}>
       <Text style={styles.countValue}>{compactNumber(value)}</Text>
       <Text style={styles.countLabel}>{label}</Text>
-    </View>
-  );
-}
-
-const KIND_ICON = { trip: "map", moment: "camera", question: "chatbubbles" } as const;
-
-const GRID_GAP = 4;
-
-function PostTile({ post, size }: { post: FeedPost; size: number }) {
-  const kind = postKind(post);
-  return (
-    <Pressable
-      onPress={() => router.push({ pathname: "/post/[id]", params: { id: String(post.id) } })}
-      accessibilityRole="button"
-      accessibilityLabel={post.title ?? post.caption}
-      style={({ pressed }) => [styles.tile, { width: size, height: size }, pressed && styles.pressed]}
-    >
-      {post.imageUrl ? (
-        <Image source={post.imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-      ) : (
-        <View style={styles.tileText}>
-          <Text style={styles.tileQuestion} numberOfLines={4}>{post.caption}</Text>
-        </View>
-      )}
-      <View style={styles.tileKind}>
-        <Ionicons name={KIND_ICON[kind]} size={12} color={colors.white} />
-      </View>
-      {post.verified ? (
-        <View style={styles.tileVerified}>
-          <Ionicons name="shield-checkmark" size={12} color={colors.limeGreen} />
-        </View>
-      ) : null}
     </Pressable>
   );
 }
@@ -312,40 +297,23 @@ const styles = StyleSheet.create({
     borderColor: colors.softGray,
   },
   name: { color: colors.inkBlack, fontSize: 24, fontWeight: font.bold },
+  country: { color: colors.textMuted, fontSize: 14 },
+  bio: { color: colors.inkBlack, fontSize: 14, lineHeight: 20, textAlign: "center", paddingHorizontal: 24 },
+  editProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: colors.limeTint,
+  },
+  editProfileText: { color: colors.deepGreen, fontSize: 14, fontWeight: font.bold },
   counts: { flexDirection: "row", gap: 28, marginBottom: 4 },
   count: { alignItems: "center" },
   countValue: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
   countLabel: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
-  tile: {
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: colors.limeTint,
-  },
-  tileText: { flex: 1, padding: 8, justifyContent: "center" },
-  tileQuestion: { color: colors.deepGreen, fontSize: 12, fontWeight: font.bold },
-  tileKind: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(27,43,40,0.55)",
-  },
-  tileVerified: {
-    position: "absolute",
-    left: 6,
-    bottom: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(27,43,40,0.7)",
-  },
   emptyPosts: { alignItems: "center", gap: 6, paddingVertical: 16 },
   emptyCta: { color: colors.deepGreen, fontSize: 14, fontWeight: font.bold },
   levelPill: {

@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
-import { getPostById, type FeedPost, type TripStop } from "../../lib/feed";
+import type { FeedPost, TripStop } from "../../lib/feed";
+import { usePost } from "../../lib/usePost";
 import { refreshMyProfile } from "../../lib/profileApi";
 import {
   LocationPermissionError,
@@ -28,7 +29,14 @@ type Point = { latitude: number; longitude: number };
 
 export default function TripScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const post = getPostById(Number(id));
+  const { post, missing } = usePost(Number(id));
+  if (!post && !missing) {
+    return (
+      <View style={styles.missing}>
+        <ActivityIndicator color={colors.deepGreen} />
+      </View>
+    );
+  }
   if (!post || post.stops.length === 0) {
     return (
       <View style={styles.missing}>

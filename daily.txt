@@ -4,11 +4,16 @@ onMyWay - NHAT KY LAM VIEC
 === 2026-11-16 ===
 
 TRANG THAI CUOI NGAY
-- Da push het len origin/main. Commit moi nhat:
-    d7cbc4a "fix map display"  (moment mo ban do trong app, nhan "Destination", thoi gian "13h 58m")
-    031dfdc "Fix hardcode DB"  (trip mode, tab Trips, seed demo, bo du lieu mock)
-- Tren emulator dang con 1 chuyen "Saigon" (trip_runs id 7) dang Recording, da toi dich 0.726 km.
-  Bam End trip de luu (hoac de nguyen cung khong sao).
+- MOI THU DANG CHAY ON: emulator Pixel_4, backend (3000), Metro (8081), Postgres (Docker),
+  app ket noi duoc backend.
+- Da push len origin/main:
+    ac1f154 "make comment loopable" (muc 6)
+    d7cbc4a "fix map display"       (muc 4)
+    031dfdc "Fix hardcode DB"       (muc 1-3)
+- CHUA COMMIT: muc 7 (Community + profile nguoi khac) va muc 8 (UX 1-4). Xem "git status".
+- Chuyen "Saigon" (trip_runs id 7, 0.726 km) da ket thuc va nam trong lich su.
+- Tai khoan Alex Lee (user dang dung tren emulator) da co bio "Weekend road trips from Saigon",
+  quoc gia Vietnam.
 
 DA LAM HOM NAY
 1. Trip mode (ghi hanh trinh GPS) - hoan thien phan dang do
@@ -37,7 +42,7 @@ DA LAM HOM NAY
      tu vi tri hien tai toi do. Link Google Maps van o trong man hinh trip.
 5. Da test tren emulator: gia lap GPS di 808 m toi dich -> server ghi 0.726 km, 1/1 diem.
 
-6. Tra loi comment qua lai (A -> B -> C -> D ...) - CHUA COMMIT
+6. Tra loi comment qua lai (A -> B -> C -> D ...) - da commit (ac1f154)
    - Migration 007_comment_replies.sql: comments.parent_id (luon la comment goc cua thread),
      comments.reply_to_user_id (nguoi duoc tra loi, hien @ten); them loai thong bao 'reply'.
    - POST /posts/:id/comments nhan them parentId; tra loi 1 reply van vao cung thread.
@@ -45,6 +50,34 @@ DA LAM HOM NAY
    - App (post/[id].tsx): nut Reply, reply thut vao, thanh "Replying to X", @ten khi tra loi
      nguoi khac nguoi mo thread, thread dai chi hien 2 reply moi nhat + "View N more replies".
    - Seed demo co san thread tra loi (cau hoi + 1/3 bai khac). Da test tren emulator OK.
+
+7. Tab Community + profile nguoi khac - CHUA COMMIT
+   - Backend: services/community.service.js
+       GET /travelers?q=        tim theo ten hoac quoc gia (ma hoac ten nuoc), q rong = tat ca
+       GET /travelers/suggested goi y: duoc nguoi minh follow follow > cung quoc gia > nhieu follower
+       GET /leaderboard?metric=km|countries|trips&period=week|month|all  (+ hang cua minh)
+     Profile tra them bio, countryCode, country. Seed them 1-5 chuyen da di cho moi user demo.
+   - App: app/(tabs)/index3.tsx (Travelers | Leaderboard), app/user/[id].tsx (profile nguoi khac:
+     khung, quoc gia, bio, level, stats, huy hieu chi xem, bai dang, nut Follow).
+     components/PostTile.tsx, components/FollowButton.tsx, lib/communityApi.ts (openProfile).
+     Bam ten/avatar o feed, trang bai, comment -> mo profile; thong bao follow -> mo profile.
+   - Da test tren emulator: Travelers, Leaderboard, profile Chloe hien dung. Follow qua API OK.
+     Nut Follow trong app chua xac nhan duoc (luc test emulator dang bi dung chung).
+   - KHONG lam chat (theo yeu cau).
+
+8. UX con thieu (1-4) - CHUA COMMIT
+   - Sua profile: app/edit-profile.tsx (anh dai dien, ten, bio, quoc gia), components/CountryPicker.tsx.
+     API: PATCH /users/me {name, bio, countryCode, avatarMediaId|null}, GET /countries (249 nuoc).
+     Avatar hien anh that o feed, trang bai, comment, Community, profile (Avatar/AvatarFrame co prop uri).
+     /auth/me tra them avatarUrl.
+   - Xoa bai cua minh: nut "..." tren trang bai (chi bai cua minh) -> xac nhan -> DELETE /posts/:id.
+   - Danh sach Followers / Following: app/follows/[id].tsx, API GET /users/:id/followers|following.
+     Bam so Followers/Following o profile minh va profile nguoi khac.
+   - Feed tai them khi cuon (20 bai/trang, ?before=). Bai chua tai (mo tu thong bao/deep link)
+     duoc lay tu server (lib/usePost.ts) thay vi bao "not found" - ca trang bai va trang trip.
+   - Da test: sua profile tren emulator OK (bio + Vietnam hien ngay). Followers, phan trang, xoa bai
+     test qua API OK. Chua test tren emulator: doi anh dai dien, man Followers, nut xoa bai,
+     cuon tai them (emulator bi tat do het gioi han 2 tieng cua tien trinh nen).
 
 CACH CHAY LAI MOI TRUONG
 - Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
@@ -55,9 +88,20 @@ CACH CHAY LAI MOI TRUONG
   (doi neu IP may thay doi: ipconfig)
 - Gia lap di chuyen: adb emu geo fix <lng> <lat>  (kinh do truoc). Server bo diem > 250 km/h,
   nen chi test quang duong ngan (vai km) hoac di cham.
+- Neu chay qua Claude Code: tien trinh nen bi dung sau 2 tieng (emulator, backend, Metro).
+  Khi khoi dong lai ma bao "Port 3000/8081 is already in use" -> con tien trinh node cu chay ngam:
+    netstat -ano | findstr ":3000 :8081"   roi   Stop-Process -Id <PID> -Force
+  sau do chay lai backend va Metro, roi adb reverse tcp:8081 tcp:8081.
+- Chay lai seed demo (npm run db:seed:demo) se xoa va tao lai bai demo voi id moi, nen cac chuyen
+  cu cua user khong phai demo (vd Alex Lee) se hien "Removed trip" (km van giu).
 
 VIEC TIEP THEO
-- Tab Community (app/(tabs)/index3.tsx) van la man hinh mau -> lam tiep.
+- Commit muc 7 + 8.
+- Test tren emulator nhung phan chua test: doi anh dai dien, man Followers/Following, nut xoa bai,
+  cuon tai them feed, nut Follow trong app.
+- Con thieu (de xuat, chua lam): quen mat khau, thong bao day (push), bao cao/chan nguoi dung,
+  tieng Viet, tim kiem bai/dia diem o Home, che do toi.
+- Seed demo: nen giu nguyen bai (upsert) thay vi xoa-tao lai, de chuyen cua user that khong bi "Removed trip".
 - An cac chuyen 0 km va chua toi diem nao trong "Your trips" (de xuat, chua lam).
 - Chua lint duoc: "npx expo lint" tu cai ESLint vao project (da hoan tac). Neu muon lint
   thi can them eslint vao project mot cach chu dong.

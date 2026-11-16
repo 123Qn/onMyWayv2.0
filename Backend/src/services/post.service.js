@@ -195,7 +195,7 @@ const setSave = async (user, postId, on) => {
 
 const serializeComment = (row) => ({
     id: String(row.id),
-    author: { id: row.author_id, name: row.author_name },
+    author: { id: row.author_id, name: row.author_name, avatarUrl: row.author_avatar ?? null },
     // Replies point at their thread's top-level comment and at the person they answer
     parentId: row.parent_id ? String(row.parent_id) : null,
     replyTo: row.reply_to_id ? { id: row.reply_to_id, name: row.reply_to_name } : null,

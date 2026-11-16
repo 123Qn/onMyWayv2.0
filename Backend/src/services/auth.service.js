@@ -28,7 +28,7 @@ const verifyAccessToken = (token) => {
     }
 };
 
-const publicUser = (user) => ({ id: user.id, name: user.name, email: user.email });
+const publicUser = (user) => ({ id: user.id, name: user.name, email: user.email, avatarUrl: user.avatar_url ?? null });
 
 // Called after a successful sign-in: opens a session for this device
 const createSessionTokens = async (user, meta = {}) => {

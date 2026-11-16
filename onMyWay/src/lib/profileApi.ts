@@ -1,4 +1,4 @@
-import { apiFetch } from "./api";
+import { apiFetch, fetchMe } from "./api";
 import { rememberPosts, type FeedPost } from "./feed";
 import { applyMyProfile, setRewardsPersister, type ProfileResponse } from "./rewards";
 
@@ -10,6 +10,22 @@ export const fetchProfile = (userId: number) => apiFetch<ProfileResponse>(`/user
 /** Reload my stats, frame and pins into the rewards store */
 export async function refreshMyProfile(userId: number) {
   applyMyProfile(await fetchProfile(userId));
+}
+
+export type ProfilePatch = {
+  name?: string;
+  bio?: string | null;
+  countryCode?: string | null;
+  /** An uploaded photo's id, or null to remove the photo */
+  avatarMediaId?: number | null;
+};
+
+/** Save my profile, then refresh the signed-in user (name, photo) and my profile store */
+export async function updateMyProfile(patch: ProfilePatch) {
+  const profile = await apiFetch<ProfileResponse>("/users/me", { method: "PATCH", body: patch });
+  applyMyProfile(profile);
+  await fetchMe();
+  return profile;
 }
 
 export async function fetchUserPosts(userId: number) {

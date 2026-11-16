@@ -12,7 +12,7 @@ export type FeedPost = {
   /** Trip headline written by the author */
   title?: string;
   /** frame: the avatar frame the author wears */
-  author: { id: number; name: string; avatarUrl?: string; frame?: string };
+  author: { id: number; name: string; avatarUrl?: string | null; frame?: string };
   place: { name: string; country: string; countryCode: string }; // ISO 3166-1 alpha-2
   category: PlaceCategory;
   imageUrl: string;
@@ -53,7 +53,7 @@ export type TripStop = {
 
 export type FeedComment = {
   id: string;
-  author: { id: number; name: string };
+  author: { id: number; name: string; avatarUrl?: string | null };
   /** Replies: the thread's top-level comment, and the person being answered (@name) */
   parentId?: string | null;
   replyTo?: { id: number; name: string } | null;
@@ -98,8 +98,23 @@ function setFeed(posts: FeedPost[]) {
 
 export const setFeedPosts = (posts: FeedPost[]) => setFeed(posts);
 
+/** Older posts loaded while scrolling, added after the ones already there */
+export const appendFeedPosts = (posts: FeedPost[]) => {
+  const ids = new Set(allPosts.map((p) => p.id));
+  setFeed([...allPosts, ...posts.filter((p) => !ids.has(p.id))]);
+};
+
+/** The oldest post in the feed, where the next page starts */
+export const oldestFeedPost = (): FeedPost | undefined => allPosts[allPosts.length - 1];
+
 /** Add or replace one post (e.g. right after creating it) */
 export const upsertFeedPost = (post: FeedPost) => setFeed([post, ...allPosts.filter((p) => p.id !== post.id)]);
+
+/** A deleted post disappears from the feed and every other list */
+export function forgetPost(postId: number) {
+  knownPosts.delete(postId);
+  setFeed(allPosts.filter((p) => p.id !== postId));
+}
 
 function subscribeFeed(listener: () => void) {
   feedListeners.add(listener);

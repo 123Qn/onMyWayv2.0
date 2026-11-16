@@ -98,13 +98,13 @@ function NotificationRow({ item }: { item: AppNotification }) {
 
   const open = () => {
     if (item.post) router.push({ pathname: "/post/[id]", params: { id: String(item.post.id) } });
+    else router.push({ pathname: "/user/[id]", params: { id: String(item.actor.id) } });
   };
 
   return (
     <Pressable
       onPress={open}
-      disabled={!item.post}
-      accessibilityRole={item.post ? "button" : undefined}
+      accessibilityRole="button"
       style={({ pressed }) => [styles.row, !item.read && styles.rowUnread, pressed && styles.pressed]}
     >
       <View>

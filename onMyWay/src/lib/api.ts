@@ -5,7 +5,7 @@ import { t } from "../i18n";
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.0.254:3000/api";
 
-export type User = { id: number; name: string; email: string };
+export type User = { id: number; name: string; email: string; avatarUrl?: string | null };
 
 export class ApiError extends Error {
   // status 0 = could not reach the server

@@ -189,7 +189,7 @@ export default function MomentsScreen() {
         </View>
 
         <View style={styles.authorRow}>
-          <AvatarFrame name={moment.author.name} frame={frame} avatarSize={34} />
+          <AvatarFrame name={moment.author.name} frame={frame} avatarSize={34} uri={moment.author.avatarUrl} />
           <View style={styles.flex}>
             <Text style={styles.author} numberOfLines={1}>
               {moment.author.name}

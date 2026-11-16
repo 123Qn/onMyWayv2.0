@@ -2,7 +2,7 @@ const pool = require("../config/database");
 
 const findProfileUser = async (userId) => {
   const { rows } = await pool.query(
-    `SELECT id, name, avatar_url, avatar_frame, pinned_badges, created_at FROM users WHERE id = $1`,
+    `SELECT id, name, avatar_url, avatar_frame, pinned_badges, bio, country_code, created_at FROM users WHERE id = $1`,
     [userId]
   );
   return rows[0];
@@ -53,4 +53,27 @@ const updateRewards = async (userId, { frame, pinnedBadges }) => {
   return rows[0];
 };
 
-module.exports = { findProfileUser, countSocial, findVerifiedPosts, updateRewards };
+// Only these columns can be edited from the profile screen
+const EDITABLE = ["name", "bio", "country_code", "avatar_url"];
+
+const updateProfile = async (userId, patch) => {
+  const fields = EDITABLE.filter((f) => f in patch);
+  if (fields.length === 0) return;
+  await pool.query(
+    `UPDATE users SET ${fields.map((f, i) => `${f} = $${i + 2}`).join(", ")} WHERE id = $1`,
+    [userId, ...fields.map((f) => patch[f])]
+  );
+};
+
+const findOwnedMediaKey = async (ownerId, mediaId) => {
+  if (!mediaId) return null;
+  const { rows } = await pool.query(
+    `SELECT s3_key FROM media WHERE id = $1 AND owner_id = $2 AND status = 'ready'`,
+    [mediaId, ownerId]
+  );
+  return rows[0]?.s3_key ?? null;
+};
+
+module.exports = {
+  updateProfile,
+  findOwnedMediaKey, findProfileUser, countSocial, findVerifiedPosts, updateRewards };

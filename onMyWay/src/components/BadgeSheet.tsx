@@ -15,8 +15,16 @@ export function badgeDescription(badge: BadgeDef) {
     : t(`rewards.specialDesc.${badge.id as SpecialBadgeId}`);
 }
 
-// Bottom sheet with a badge's details, progress and pin toggle
-export function BadgeSheet({ progress, onClose }: { progress: BadgeProgress | null; onClose: () => void }) {
+// Bottom sheet with a badge's details, progress and pin toggle (readOnly: someone else's badge)
+export function BadgeSheet({
+  progress,
+  onClose,
+  readOnly = false,
+}: {
+  progress: BadgeProgress | null;
+  onClose: () => void;
+  readOnly?: boolean;
+}) {
   const insets = useSafeAreaInsets();
   const { pinned, togglePin } = useRewards();
 
@@ -59,14 +67,14 @@ export function BadgeSheet({ progress, onClose }: { progress: BadgeProgress | nu
           </Text>
         </View>
 
-        {!unlocked && badge.category !== "social" && badge.category !== "community" ? (
+        {!readOnly && !unlocked && badge.category !== "social" && badge.category !== "community" ? (
           <View style={styles.howTo}>
             <Ionicons name="shield-checkmark" size={16} color={colors.deepGreen} />
             <Text style={styles.howToText}>{t("rewards.howToEarn")}</Text>
           </View>
         ) : null}
 
-        {unlocked ? (
+        {unlocked && !readOnly ? (
           <View style={styles.button}>
             <PrimaryButton
               title={isPinned ? t("rewards.unpin") : t("rewards.pin")}

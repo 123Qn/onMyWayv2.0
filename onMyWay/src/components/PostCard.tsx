@@ -9,6 +9,7 @@ import { isByUser, postKind, type FeedPost } from "../lib/feed";
 import { useFollowing, usePostState } from "../lib/postStore";
 import { colors, font, radius } from "../lib/theme";
 import { useAuthorFrame } from "../lib/rewards";
+import { openProfile } from "../lib/communityApi";
 import { AvatarFrame } from "./AvatarFrame";
 import { FaceStack } from "./FaceStack";
 import { PhotoCarousel, type Slide } from "./PhotoCarousel";
@@ -33,10 +34,19 @@ function PostCardImpl({ post }: { post: FeedPost }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <AvatarFrame name={post.author.name} frame={frame} avatarSize={40} />
+        <Pressable
+          onPress={() => openProfile(post.author.id, user?.id)}
+          accessibilityRole="button"
+          accessibilityLabel={post.author.name}
+          hitSlop={4}
+        >
+          <AvatarFrame name={post.author.name} frame={frame} avatarSize={40} uri={post.author.avatarUrl} />
+        </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.authorLine} numberOfLines={1}>
-            <Text style={styles.author}>{post.author.name}</Text>
+            <Text style={styles.author} onPress={() => openProfile(post.author.id, user?.id)}>
+              {post.author.name}
+            </Text>
             <Text style={styles.subtitle}> {subtitle}</Text>
           </Text>
           <View style={styles.metaRow}>

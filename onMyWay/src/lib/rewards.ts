@@ -146,6 +146,7 @@ type RewardsState = {
   frame: FrameId;
   pinned: BadgeId[];
   counts: { posts: number; followers: number; following: number };
+  about: { bio: string | null; countryCode: string | null; country: string | null; avatarUrl: string | null };
   loaded: boolean;
 };
 
@@ -155,6 +156,7 @@ const INITIAL: RewardsState = {
   frame: "classic",
   pinned: [],
   counts: { posts: 0, followers: 0, following: 0 },
+  about: { bio: null, countryCode: null, country: null, avatarUrl: null },
   loaded: false,
 };
 
@@ -176,7 +178,17 @@ function subscribe(listener: () => void) {
 }
 
 export type ProfileResponse = {
-  user: { id: number; name: string; frame: FrameId; pinnedBadges: string[]; joinedAt: string };
+  user: {
+    id: number;
+    name: string;
+    frame: FrameId;
+    pinnedBadges: string[];
+    avatarUrl: string | null;
+    bio: string | null;
+    countryCode: string | null;
+    country: string | null;
+    joinedAt: string;
+  };
   counts: RewardsState["counts"];
   followedByViewer: boolean;
   stats: TravelStats;
@@ -193,6 +205,12 @@ export function applyMyProfile(profile: ProfileResponse) {
     frame: profile.user.frame,
     pinned: profile.user.pinnedBadges.filter((id): id is BadgeId => known.has(id)),
     counts: profile.counts,
+    about: {
+      bio: profile.user.bio,
+      countryCode: profile.user.countryCode,
+      country: profile.user.country,
+      avatarUrl: profile.user.avatarUrl,
+    },
     loaded: true,
   });
   // Celebrate what this refresh unlocked (not the first load after sign-in)

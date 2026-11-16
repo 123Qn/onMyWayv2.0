@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { useFeedPosts } from "../../lib/feed";
-import { refreshFeed } from "../../lib/postsApi";
+import { loadMoreFeed, refreshFeed } from "../../lib/postsApi";
 import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors, font } from "../../lib/theme";
@@ -26,15 +26,24 @@ export default function FeedScreen() {
 
   // Load posts on open and on pull-to-refresh
   const unread = useUnreadCount();
+  // Older posts load as you reach the end; hasMore turns off at the last page
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const reload = useCallback(async () => {
     setRefreshing(true);
     refreshUnreadCount().catch(() => {});
-    await refreshFeed().catch(() => {});
+    await refreshFeed().then(setHasMore, () => {});
     setRefreshing(false);
   }, []);
   useEffect(() => {
-    refreshFeed().catch(() => {});
+    refreshFeed().then(setHasMore, () => {});
   }, []);
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || refreshing) return;
+    setLoadingMore(true);
+    await loadMoreFeed().then(setHasMore, () => {});
+    setLoadingMore(false);
+  };
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [country, setCountry] = useState<string | null>(null);
 
@@ -91,7 +100,7 @@ export default function FeedScreen() {
             accessibilityLabel={t("feed.openProfile")}
             hitSlop={8}
           >
-            <AvatarFrame name={user.name} frame={frame} avatarSize={34} />
+            <AvatarFrame name={user.name} frame={frame} avatarSize={34} uri={user.avatarUrl} />
           </Pressable>
         ) : null}
         </View>
@@ -127,6 +136,9 @@ export default function FeedScreen() {
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.6}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.deepGreen} style={styles.more} /> : undefined}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={reload} colors={[colors.deepGreen]} tintColor={colors.deepGreen} />
@@ -142,6 +154,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.softGray },
   content: { paddingBottom: 24 },
+  more: { marginVertical: 20 },
   header: { paddingTop: 8, paddingBottom: 16, gap: 18 },
   topBar: {
     flexDirection: "row",

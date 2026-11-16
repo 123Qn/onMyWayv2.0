@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,
@@ -20,22 +21,33 @@ import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { compactNumber, flagEmoji, timeAgo } from "../../lib/format";
 import { getPostById, isByUser, postKind, type FeedComment } from "../../lib/feed";
-import { fetchComments } from "../../lib/postsApi";
+import { deletePost, fetchComments } from "../../lib/postsApi";
 import { useFollowing, usePostState } from "../../lib/postStore";
 import { useTripRecorder } from "../../lib/tripRecorder";
+import { usePost } from "../../lib/usePost";
 import { colors, font, radius } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { useAuthorFrame } from "../../lib/rewards";
+import { openProfile } from "../../lib/communityApi";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
 
 export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const post = getPostById(Number(id));
-  return post ? <PostDetail postId={post.id} /> : <NotFound />;
+  const { post, missing } = usePost(Number(id));
+  if (post) return <PostDetail postId={post.id} />;
+  return missing ? <NotFound /> : <Loading />;
+}
+
+function Loading() {
+  return (
+    <View style={styles.notFound}>
+      <ActivityIndicator color={colors.deepGreen} />
+    </View>
+  );
 }
 
 function PostDetail({ postId }: { postId: number }) {
@@ -107,6 +119,32 @@ function PostDetail({ postId }: { postId: number }) {
     inputRef.current?.focus();
   };
 
+  // My own post: delete it (after confirming)
+  const openMenu = () =>
+    Alert.alert(t("post.more"), undefined, [
+      {
+        text: t("post.delete"),
+        style: "destructive",
+        onPress: () =>
+          Alert.alert(t("post.deleteTitle"), t("post.deleteBody"), [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("post.delete"),
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await deletePost(post.id, user?.id);
+                  router.back();
+                } catch (e) {
+                  Alert.alert(t("post.deleteFailed"), e instanceof Error ? e.message : t("common.genericError"));
+                }
+              },
+            },
+          ]),
+      },
+      { text: t("common.cancel"), style: "cancel" },
+    ]);
+
   const share = () => {
     Share.share({ message: `${post.place.name}, ${post.place.country} — ${post.caption}` }).catch(() => {});
   };
@@ -162,13 +200,20 @@ function PostDetail({ postId }: { postId: number }) {
           </View>
 
           <View style={styles.authorRow}>
-            <AvatarFrame name={post.author.name} frame={frame} avatarSize={44} />
-            <View style={styles.authorText}>
-              <Text style={styles.authorName}>{post.author.name}</Text>
-              <Text style={styles.muted} numberOfLines={1}>
-                {timeAgo(post.createdAt)}
-              </Text>
-            </View>
+            <Pressable
+              onPress={() => openProfile(post.author.id, user?.id)}
+              accessibilityRole="button"
+              accessibilityLabel={post.author.name}
+              style={styles.authorLink}
+            >
+              <AvatarFrame name={post.author.name} frame={frame} avatarSize={44} uri={post.author.avatarUrl} />
+              <View style={styles.authorText}>
+                <Text style={styles.authorName}>{post.author.name}</Text>
+                <Text style={styles.muted} numberOfLines={1}>
+                  {timeAgo(post.createdAt)}
+                </Text>
+              </View>
+            </Pressable>
             {!isMine ? (
             <Pressable
               onPress={toggleFollow}
@@ -308,12 +353,16 @@ function PostDetail({ postId }: { postId: number }) {
           {post.title ?? post.place.name}
         </Animated.Text>
         <RoundButton icon="paper-plane-outline" label={t("feed.share")} onPress={share} />
-        <RoundButton
-          icon={saved ? "flag" : "flag-outline"}
-          color={saved ? colors.deepGreen : colors.inkBlack}
-          label={saved ? t("feed.onMyList") : t("feed.wantToGo")}
-          onPress={toggleSave}
-        />
+        {isMine ? (
+          <RoundButton icon="ellipsis-horizontal" label={t("post.more")} onPress={openMenu} />
+        ) : (
+          <RoundButton
+            icon={saved ? "flag" : "flag-outline"}
+            color={saved ? colors.deepGreen : colors.inkBlack}
+            label={saved ? t("feed.onMyList") : t("feed.wantToGo")}
+            onPress={toggleSave}
+          />
+        )}
       </View>
 
       <Modal visible={mapOpen} animationType="slide" onRequestClose={() => setMapOpen(false)}>
@@ -343,7 +392,7 @@ function PostDetail({ postId }: { postId: number }) {
         </View>
       ) : null}
       <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        {user ? <Avatar name={user.name} size={36} /> : null}
+        {user ? <Avatar name={user.name} size={36} uri={user.avatarUrl} /> : null}
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -391,12 +440,16 @@ function CommentRow({
   reply?: boolean;
   mention?: string;
 }) {
+  const { user } = useAuth();
+  const openAuthor = () => openProfile(comment.author.id, user?.id);
   return (
     <View style={[styles.comment, reply && styles.replyRow]}>
-      <Avatar name={comment.author.name} size={reply ? 28 : 34} />
+      <Pressable onPress={openAuthor} accessibilityRole="button" accessibilityLabel={comment.author.name} hitSlop={4}>
+        <Avatar name={comment.author.name} size={reply ? 28 : 34} uri={comment.author.avatarUrl} />
+      </Pressable>
       <View style={styles.commentBody}>
         <View style={styles.commentHeader}>
-          <Text style={styles.commentAuthor}>{comment.author.name}</Text>
+          <Text style={styles.commentAuthor} onPress={openAuthor}>{comment.author.name}</Text>
           <Text style={styles.commentTime}>{timeAgo(comment.createdAt)}</Text>
         </View>
         <Text style={styles.commentText}>
@@ -521,6 +574,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
 
   authorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, marginLeft: -12 },
+  authorLink: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
   authorText: { flex: 1, gap: 2 },
   follow: {
     flexDirection: "row",

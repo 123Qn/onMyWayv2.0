@@ -38,7 +38,7 @@ export default function FramesScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.stage}>
-          <AvatarFrame name={user?.name ?? "?"} frame={preview.id} avatarSize={120} />
+          <AvatarFrame name={user?.name ?? "?"} frame={preview.id} avatarSize={120} uri={user?.avatarUrl} />
           <Text style={styles.frameName}>{t(`rewards.frames.${preview.id}`)}</Text>
           <View style={[styles.rarity, { backgroundColor: tone.light }]}>
             <Text style={[styles.rarityText, { color: tone.dark }]}>{t(`rewards.rarity.${preview.rarity}`)}</Text>

@@ -54,6 +54,13 @@ const random = () => {
 };
 const pick = (list, n) => [...list].sort(() => random() - 0.5).slice(0, n);
 const between = (min, max) => min + Math.floor(random() * (max - min + 1));
+const haversineKm = (a, b) => {
+  const rad = (d) => (Number(d) * Math.PI) / 180;
+  const dLat = rad(b.latitude) - rad(a.latitude);
+  const dLng = rad(b.longitude) - rad(a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+};
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set (check .env)");
@@ -85,6 +92,7 @@ async function main() {
     await db.query(`DELETE FROM follows WHERE follower_id = ANY($1)`, [ids]);
     await db.query(`DELETE FROM notifications WHERE actor_id = ANY($1)`, [ids]);
     await db.query(`DELETE FROM media WHERE owner_id = ANY($1) AND s3_key LIKE 'http%'`, [ids]);
+    await db.query(`DELETE FROM trip_runs WHERE user_id = ANY($1)`, [ids]);
 
     const mediaIds = new Map();
     const media = async (url, ownerId) => {
@@ -180,6 +188,33 @@ async function main() {
       }
     }
 
+    // Finished trips over the last two months: 1 to 5 per traveler, on other people's trips and moments
+    let runCount = 0;
+    const followable = created.filter((p) => p.data.kind !== "question");
+    for (const id of ids) {
+      for (const post of pick(followable.filter((p) => p.author !== id), between(1, 5))) {
+        const { rows: stops } = await db.query(
+          `SELECT id, latitude, longitude FROM post_stops WHERE post_id = $1 ORDER BY position`,
+          [post.id]
+        );
+        const reached = stops.slice(0, between(Math.min(1, stops.length), stops.length));
+        // Road distance between the stops plus getting there, with some randomness
+        let km = between(2, 25);
+        for (let i = 1; i < stops.length; i++) km += haversineKm(stops[i - 1], stops[i]) * 1.3;
+        const daysAgo = between(0, 59);
+        const startedAt = new Date(Date.now() - daysAgo * 24 * 3600 * 1000 - between(1, 20) * 3600 * 1000);
+        const endedAt = new Date(startedAt.getTime() + between(2, 30) * 3600 * 1000);
+        const last = reached[reached.length - 1] ?? stops[0];
+        await db.query(
+          `INSERT INTO trip_runs (user_id, post_id, started_at, ended_at, distance_km, visited_stops, last_lat, last_lng, last_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $4)`,
+          [id, post.id, startedAt, endedAt < new Date() ? endedAt : new Date(), Math.min(km, 9999).toFixed(3),
+           reached.map((s) => s.id), last.latitude, last.longitude]
+        );
+        runCount++;
+      }
+    }
+
     // Everyone follows 3 to 6 of the others
     let followCount = 0;
     for (const id of ids) {
@@ -192,7 +227,7 @@ async function main() {
     await db.query("COMMIT");
     console.log(
       `Seeded ${ids.length} users (test1..test${ids.length}@gmail.com / ${DEMO_PASSWORD}), ${created.length} posts, ` +
-        `${commentCount} comments, ${likeCount} likes, ${saveCount} saves, ${followCount} follows.`
+        `${commentCount} comments, ${likeCount} likes, ${saveCount} saves, ${followCount} follows, ${runCount} trips taken.`
     );
   } catch (err) {
     await db.query("ROLLBACK");

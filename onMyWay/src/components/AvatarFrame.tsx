@@ -9,9 +9,9 @@ import { Avatar } from "./Avatar";
 // The avatar fills the middle 64% of the frame; decorations are drawn around it in a 100x100 box
 const AVATAR_RATIO = 0.64;
 
-type Props = { name: string; frame: FrameId; avatarSize: number };
+type Props = { name: string; frame: FrameId; avatarSize: number; uri?: string | null };
 
-export function AvatarFrame({ name, frame, avatarSize }: Props) {
+export function AvatarFrame({ name, frame, avatarSize, uri }: Props) {
   const size = avatarSize / AVATAR_RATIO;
   return (
     <View style={{ width: size, height: size }}>
@@ -19,7 +19,7 @@ export function AvatarFrame({ name, frame, avatarSize }: Props) {
         {FRAME_ART[frame]()}
       </Svg>
       <View style={styles.center} pointerEvents="none">
-        <Avatar name={name} size={avatarSize} />
+        <Avatar name={name} size={avatarSize} uri={uri} />
       </View>
       {frame === "jet" ? (
         // The plane flies on top of the orbit line

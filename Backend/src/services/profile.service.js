@@ -1,4 +1,5 @@
 const profileModel = require("../models/profile.model");
+const { countryName } = require("./community.service");
 
 const FRAMES = ["none", "classic", "road", "wave", "summit", "compass", "stamp", "sunrise", "jet", "tropical", "aurora", "laurel"];
 const CATEGORIES = ["beach", "island", "mountain", "city", "food", "nature", "culture"];
@@ -101,9 +102,12 @@ const getProfile = async (viewer, userId) => {
         user: {
             id: user.id,
             name: user.name,
-            avatarUrl: user.avatar_url ?? undefined,
+            avatarUrl: user.avatar_url ?? null,
             frame: user.avatar_frame,
             pinnedBadges: user.pinned_badges,
+            bio: user.bio ?? null,
+            countryCode: user.country_code ?? null,
+            country: countryName(user.country_code),
             joinedAt: user.created_at.toISOString(),
         },
         counts: { posts: social.posts, followers: social.followers, following: social.following },
@@ -129,4 +133,35 @@ const updateRewards = async (user, body) => {
     return { frame: row.avatar_frame, pinnedBadges: row.pinned_badges };
 };
 
-module.exports = { computeStats, getProfile, updateRewards };
+/**
+ * Edit my profile: name, bio, country and photo. Only the fields sent change;
+ * avatarMediaId must be one of my uploads, null removes the photo.
+ */
+const updateProfile = async (user, body, toUrl) => {
+    const patch = {};
+    if (body?.name !== undefined) {
+        const name = typeof body.name === "string" ? body.name.trim().slice(0, 100) : "";
+        if (!name) throw httpError(400, "Your name can't be empty.");
+        patch.name = name;
+    }
+    if (body?.bio !== undefined) {
+        patch.bio = typeof body.bio === "string" && body.bio.trim() ? body.bio.trim().slice(0, 300) : null;
+    }
+    if (body?.countryCode !== undefined) {
+        const code = typeof body.countryCode === "string" ? body.countryCode.toUpperCase() : null;
+        if (code && !/^[A-Z]{2}$/.test(code)) throw httpError(400, "Unknown country.");
+        patch.country_code = code || null;
+    }
+    if (body?.avatarMediaId !== undefined) {
+        if (body.avatarMediaId === null) patch.avatar_url = null;
+        else {
+            const key = await profileModel.findOwnedMediaKey(user.id, toId(body.avatarMediaId));
+            if (!key) throw httpError(400, "That photo could not be found.");
+            patch.avatar_url = toUrl(key);
+        }
+    }
+    await profileModel.updateProfile(user.id, patch);
+    return getProfile(user, user.id);
+};
+
+module.exports = { computeStats, getProfile, updateRewards, updateProfile };
