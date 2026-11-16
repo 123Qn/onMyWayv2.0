@@ -5,6 +5,8 @@ import { NavigationBar } from "expo-navigation-bar";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 import { CelebrationHost } from "../components/Celebration";
+// Defines the background location task; must load before Android can wake it up
+import "../lib/tripRecorder";
 
 function RootNavigator() {
   const { user, loading } = useAuth();
@@ -25,6 +27,7 @@ function RootNavigator() {
         <Stack.Screen name="badges" />
         <Stack.Screen name="frames" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="trip/[id]" />
         <Stack.Screen name="moments" options={{ animation: "fade", presentation: "fullScreenModal" }} />
         <Stack.Screen name="create" options={{ presentation: "modal", gestureEnabled: false }} />
       </Stack.Protected>

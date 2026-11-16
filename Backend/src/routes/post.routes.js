@@ -8,6 +8,7 @@ router.use(requireAuth);
 
 router.get("/", postController.feed);
 router.post("/", postController.create);
+router.get("/saved", postController.saved);  // before "/:id"
 router.get("/:id", postController.show);
 router.delete("/:id", postController.remove);
 

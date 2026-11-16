@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
-import type { PlaceCategory, PostKind } from "../lib/mockFeed";
+import type { PlaceCategory, PostKind } from "../lib/feed";
 import { createPost, uploadPhoto, type NewPostStop } from "../lib/postsApi";
 import { PermissionError, pickPhotos, takePhoto, type PostPhoto } from "../lib/verify";
 import { LocationPicker, type Coords } from "../components/LocationPicker";

@@ -65,6 +65,8 @@ const singleImage = (req, res, next) => {
 // Absolute URL for a stored key, e.g. http://192.168.0.12:3000/uploads/<file>
 const publicUrl = (req, key) => {
     if (!key) return null;
+    // Seeded demo photos are already absolute URLs
+    if (/^https?:\/\//.test(key)) return key;
     const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
     return `${base}/${key}`;
 };

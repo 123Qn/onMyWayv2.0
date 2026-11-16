@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
-import type { TripStop } from "../lib/mockFeed";
+import type { TripStop } from "../lib/feed";
 import { colors, font } from "../lib/theme";
 
 // Vertical timeline: numbered pin, connecting road, then photo + caption for each stop

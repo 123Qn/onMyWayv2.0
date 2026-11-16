@@ -4,14 +4,25 @@ const pool = require("../config/database");
 const POST_SELECT = `
   SELECT p.id, p.kind, p.title, p.caption, p.category, p.place_name, p.country_name, p.country_code,
          p.trip_days, p.trip_day, p.verified, p.created_at,
-         u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar,
+         u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar, u.avatar_frame AS author_frame,
          cm.s3_key AS cover_key,
          (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id)::int AS likes,
          (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id)::int AS comments,
          (SELECT COUNT(*) FROM post_saves s WHERE s.post_id = p.id)::int AS saves,
          EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = $1) AS liked,
          EXISTS (SELECT 1 FROM post_saves s WHERE s.post_id = p.id AND s.user_id = $1) AS saved,
-         EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = $1 AND f.following_id = p.user_id) AS following
+         EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = $1 AND f.following_id = p.user_id) AS following,
+         -- "Liked by ...": someone the viewer follows first, otherwise the latest liker
+         (SELECT lu.name FROM post_likes l JOIN users lu ON lu.id = l.user_id
+          WHERE l.post_id = p.id AND l.user_id <> $1
+          ORDER BY EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = $1 AND f.following_id = l.user_id) DESC,
+                   l.created_at DESC
+          LIMIT 1) AS liked_by,
+         -- Faces of the latest people who commented (answered, for questions)
+         ARRAY(SELECT cu.name FROM comments c JOIN users cu ON cu.id = c.user_id
+               WHERE c.post_id = p.id GROUP BY cu.id, cu.name ORDER BY MAX(c.created_at) DESC LIMIT 3) AS commenters,
+         -- Other travelers who followed this trip with the in-app map
+         (SELECT COUNT(DISTINCT r.user_id) FROM trip_runs r WHERE r.post_id = p.id AND r.user_id <> p.user_id)::int AS took_trip
   FROM posts p
   JOIN users u ON u.id = p.user_id
   LEFT JOIN media cm ON cm.id = p.cover_media_id`;
@@ -56,6 +67,28 @@ const listFeed = async (viewerId, { before, limit, authorId }) => {
      ORDER BY p.created_at DESC
      LIMIT $3`,
     [viewerId, before ?? null, limit, authorId ?? null]
+  );
+  return rows;
+};
+
+// The viewer's "want to go" list, most recently saved first
+const listSaved = async (viewerId, limit) => {
+  const { rows } = await pool.query(
+    `${POST_SELECT}
+     JOIN post_saves mine ON mine.post_id = p.id AND mine.user_id = $1
+     WHERE p.status = 'published'
+     ORDER BY mine.created_at DESC
+     LIMIT $2`,
+    [viewerId, limit]
+  );
+  return rows;
+};
+
+const findPosts = async (viewerId, postIds) => {
+  if (postIds.length === 0) return [];
+  const { rows } = await pool.query(
+    `${POST_SELECT} WHERE p.id = ANY($2::bigint[]) AND p.status = 'published'`,
+    [viewerId, postIds]
   );
   return rows;
 };
@@ -132,6 +165,8 @@ const setFollow = async (followerId, followingId, on) => {
 module.exports = {
   createPost,
   listFeed,
+  listSaved,
+  findPosts,
   findPost,
   findStops,
   findOwner,

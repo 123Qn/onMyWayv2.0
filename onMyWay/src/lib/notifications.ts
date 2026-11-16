@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { apiFetch } from "./api";
-import type { PostKind } from "./mockFeed";
+import type { PostKind } from "./feed";
 
 export type NotificationType = "like" | "comment" | "answer" | "follow";
 

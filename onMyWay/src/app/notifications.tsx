@@ -7,7 +7,7 @@ import { router, useFocusEffect } from "expo-router";
 import { t } from "../i18n";
 import { timeAgo } from "../lib/format";
 import { fetchNotifications, markAllRead, type AppNotification } from "../lib/notifications";
-import { authorFrame, type FrameId } from "../lib/rewards";
+import type { FrameId } from "../lib/rewards";
 import { colors, font } from "../lib/theme";
 import { AvatarFrame } from "../components/AvatarFrame";
 
@@ -105,7 +105,7 @@ function NotificationRow({ item }: { item: AppNotification }) {
       style={({ pressed }) => [styles.row, !item.read && styles.rowUnread, pressed && styles.pressed]}
     >
       <View>
-        <AvatarFrame name={item.actor.name} frame={(item.actor.frame as FrameId | undefined) ?? authorFrame(item.actor.name)} avatarSize={40} />
+        <AvatarFrame name={item.actor.name} frame={(item.actor.frame as FrameId | undefined) ?? "classic"} avatarSize={40} />
         <View style={styles.typeBadge}>
           <Ionicons name={icon.name} size={11} color={icon.color} />
         </View>

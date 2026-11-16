@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { timeAgo } from "../lib/format";
-import { groupMoments, useFeedPosts, type MomentGroup } from "../lib/mockFeed";
+import { groupMoments, useFeedPosts, type MomentGroup } from "../lib/feed";
 import { useSeenMoments } from "../lib/postStore";
 import { colors, font } from "../lib/theme";
 import { Avatar } from "./Avatar";

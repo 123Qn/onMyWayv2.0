@@ -1,5 +1,5 @@
 import { apiFetch } from "./api";
-import type { FeedPost } from "./mockFeed";
+import { rememberPosts, type FeedPost } from "./feed";
 import { applyMyProfile, setRewardsPersister, type ProfileResponse } from "./rewards";
 
 // Frame and pin changes from the rewards store are saved here
@@ -12,9 +12,8 @@ export async function refreshMyProfile(userId: number) {
   applyMyProfile(await fetchProfile(userId));
 }
 
-// Same marker postsApi adds: likes etc. on these posts go to the server
-const asRemote = (post: FeedPost): FeedPost => ({ ...post, remote: true });
-
 export async function fetchUserPosts(userId: number) {
-  return (await apiFetch<FeedPost[]>(`/posts?author=${userId}&limit=50`)).map(asRemote);
+  const posts = await apiFetch<FeedPost[]>(`/posts?author=${userId}&limit=50`);
+  rememberPosts(posts);
+  return posts;
 }

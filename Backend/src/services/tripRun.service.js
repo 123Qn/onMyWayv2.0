@@ -1,4 +1,5 @@
 const pool = require("../config/database");
+const postService = require("./post.service");
 
 const ROUTING_URL = process.env.ROUTING_URL || "https://router.project-osrm.org";
 const VISIT_RADIUS_KM = 0.25;
@@ -124,7 +125,8 @@ const addPoints = async (user, runId, body) => {
             at: new Date(p?.recordedAt),
         }))
         .filter((p) => Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180 && !Number.isNaN(p.at.getTime()))
-        .filter((p) => p.at <= new Date(Date.now() + 60_000) && p.at >= run.started_at)
+        // A first fix can be a cached one from just before Start: allow 2 minutes of slack
+        .filter((p) => p.at <= new Date(Date.now() + 60_000) && p.at >= new Date(run.started_at.getTime() - 120_000))
         .filter((p) => p.accuracy === null || p.accuracy <= MAX_ACCURACY_M)
         .sort((a, b) => a.at - b.at);
 
@@ -191,6 +193,20 @@ const endRun = async (user, runId) => {
     return serialize(rows[0]);
 };
 
+// Finished trips, newest first, each with the post it followed
+const listRuns = async (user, query, toUrl) => {
+    const limit = Math.min(Math.max(Number.parseInt(query?.limit, 10) || 30, 1), 50);
+    const { rows } = await pool.query(
+        `SELECT * FROM trip_runs WHERE user_id = $1 AND ended_at IS NOT NULL ORDER BY started_at DESC LIMIT $2`,
+        [user.id, limit]
+    );
+    const posts = await postService.getPostsById(user, [...new Set(rows.map((r) => r.post_id).filter(Boolean))], toUrl);
+    return rows.map((row) => {
+        const run = serialize(row);
+        return { ...run, post: (run.postId && posts.get(run.postId)) || null };
+    });
+};
+
 const getTrack = async (user, runId) => {
     const run = await findRun(user.id, toId(runId));
     const { rows } = await pool.query(
@@ -200,4 +216,4 @@ const getTrack = async (user, runId) => {
     return rows.map((r) => [Number(r.latitude), Number(r.longitude)]);
 };
 
-module.exports = { getRoute, startRun, activeRun, addPoints, endRun, getTrack, haversine };
+module.exports = { getRoute, startRun, activeRun, listRuns, addPoints, endRun, getTrack, haversine };

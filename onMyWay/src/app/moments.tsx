@@ -8,7 +8,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { timeAgo } from "../lib/format";
-import { groupMoments, isByUser, useFeedPosts, type FeedPost } from "../lib/mockFeed";
+import { groupMoments, isByUser, useFeedPosts, type FeedPost } from "../lib/feed";
 import { useSeenMoments } from "../lib/postStore";
 import { useAuthorFrame } from "../lib/rewards";
 import { colors, font } from "../lib/theme";

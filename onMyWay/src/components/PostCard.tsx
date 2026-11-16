@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
 import { compactNumber as compact, flagEmoji, timeAgo } from "../lib/format";
-import { getMockComments, isByUser, postKind, type FeedPost } from "../lib/mockFeed";
+import { isByUser, postKind, type FeedPost } from "../lib/feed";
 import { useFollowing, usePostState } from "../lib/postStore";
 import { colors, font, radius } from "../lib/theme";
 import { useAuthorFrame } from "../lib/rewards";
@@ -27,14 +27,8 @@ function PostCardImpl({ post }: { post: FeedPost }) {
     Share.share({ message: `${post.place.name}, ${post.place.country} — ${post.caption}` }).catch(() => {});
   };
 
-  // "with Mai Hoang +1" when tagged with friends, otherwise what kind of post it is
-  const companions = post.companions ?? [];
-  const subtitle =
-    companions.length === 0
-      ? t(`feed.kind.${kind}`)
-      : companions.length === 1
-        ? t("feed.withOne", { name: companions[0] })
-        : t("feed.withMany", { name: companions[0], count: companions.length - 1 });
+  // What kind of post it is ("shared a trip")
+  const subtitle = t(`feed.kind.${kind}`);
 
   return (
     <View style={styles.card}>
@@ -148,7 +142,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
       {post.likedBy ? (
         <View style={styles.likedBy}>
           <FaceStack
-            names={[post.likedBy, ...companions]}
+            names={[post.likedBy]}
             bold={post.likedBy}
             text={
               likes > 1
@@ -212,7 +206,7 @@ function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
 }
 
 function QuestionBody({ post, commentCount, onOpen }: { post: FeedPost; commentCount: number; onOpen: () => void }) {
-  const answerers = getMockComments(post).map((c) => c.author.name);
+  const answerers = post.commenters ?? [];
 
   return (
     <Pressable

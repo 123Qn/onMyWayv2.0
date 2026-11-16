@@ -104,7 +104,7 @@ const serialize = (row, stops, toUrl) => ({
     id: Number(row.id),
     kind: row.kind,
     title: row.title ?? undefined,
-    author: { id: row.author_id, name: row.author_name, avatarUrl: row.author_avatar ?? undefined },
+    author: { id: row.author_id, name: row.author_name, avatarUrl: row.author_avatar ?? undefined, frame: row.author_frame },
     place: { name: row.place_name ?? "", country: row.country_name ?? "", countryCode: row.country_code ?? "" },
     category: row.category,
     imageUrl: toUrl(row.cover_key) ?? "",
@@ -119,6 +119,9 @@ const serialize = (row, stops, toUrl) => ({
     liked: row.liked,
     saved: row.saved,
     followingAuthor: row.following,
+    likedBy: row.liked_by ?? undefined,
+    commenters: row.commenters,
+    tookTrip: row.took_trip,
     stops: stops.map((s) => ({
         id: String(s.id),
         name: s.name,
@@ -141,6 +144,17 @@ const listFeed = async (user, query, toUrl) => {
     const authorId = toId(query.author);
     const rows = await postModel.listFeed(user.id, { before, limit, authorId });
     return withStops(rows, toUrl);
+};
+
+const listSaved = async (user, query, toUrl) => {
+    const limit = optionalInt(query.limit, 1, 50) ?? 50;
+    return withStops(await postModel.listSaved(user.id, limit), toUrl);
+};
+
+// Several posts at once, keyed by id (missing or deleted posts are left out)
+const getPostsById = async (user, ids, toUrl) => {
+    const posts = await withStops(await postModel.findPosts(user.id, ids), toUrl);
+    return new Map(posts.map((p) => [p.id, p]));
 };
 
 const getPost = async (user, postId, toUrl) => {
@@ -221,6 +235,8 @@ module.exports = {
     parsePost,
     createPost,
     listFeed,
+    listSaved,
+    getPostsById,
     getPost,
     deletePost,
     setLike,

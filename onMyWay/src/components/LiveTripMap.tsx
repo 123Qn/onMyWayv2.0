@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
-import type { TripStop } from "../lib/mockFeed";
+import type { TripStop } from "../lib/feed";
 import { colors } from "../lib/theme";
 
 type Props = {

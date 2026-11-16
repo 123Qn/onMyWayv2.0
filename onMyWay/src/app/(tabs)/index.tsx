@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
-import { useFeedPosts } from "../../lib/mockFeed";
+import { useFeedPosts } from "../../lib/feed";
 import { refreshFeed } from "../../lib/postsApi";
 import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
@@ -24,7 +24,7 @@ export default function FeedScreen() {
   const allPosts = useFeedPosts();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load real posts on open and on pull-to-refresh; the sample posts stay if the server is unreachable
+  // Load posts on open and on pull-to-refresh
   const unread = useUnreadCount();
   const reload = useCallback(async () => {
     setRefreshing(true);

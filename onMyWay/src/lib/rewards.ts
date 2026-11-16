@@ -131,25 +131,10 @@ export function computeRewards(stats: TravelStats): Rewards {
 
 export const getBadge = (id: BadgeId) => BADGES.find((b) => b.id === id)!;
 
-// Frames worn by the sample authors in the feed
-const AUTHOR_FRAMES: Record<string, FrameId> = {
-  "Linh Tran": "wave",
-  "Mai Hoang": "sunrise",
-  "Minh Nguyen": "summit",
-  "Lucas Silva": "jet",
-  "James Walker": "compass",
-  "Sofia Rossi": "laurel",
-  "Chloe Martin": "tropical",
-  "Noah Kim": "aurora",
-  "An Pham": "road",
-  "Made Wirawan": "stamp",
-};
-export const authorFrame = (name: string): FrameId => AUTHOR_FRAMES[name] ?? "none";
-
 /** My own posts always show the frame I have equipped now */
 export function useAuthorFrame(author: { name: string; frame?: string }, mine: boolean): FrameId {
   const { frame } = useRewards();
-  return mine ? frame : ((author.frame as FrameId | undefined) ?? authorFrame(author.name));
+  return mine ? frame : ((author.frame as FrameId | undefined) ?? "classic");
 }
 
 // ---------------------------------------------------------------------------

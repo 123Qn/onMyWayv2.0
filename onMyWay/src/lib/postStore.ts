@@ -1,10 +1,9 @@
 import { useSyncExternalStore } from "react";
 import { apiFetch } from "./api";
-import type { FeedComment, FeedPost } from "./mockFeed";
+import type { FeedComment, FeedPost } from "./feed";
 
 // Likes, "want to go" saves, follows and new comments shared by the feed and the post screen.
-// Changes show instantly (optimistic); API posts are then synced with the server and rolled back
-// if that fails. Sample posts (negative ids) only change locally.
+// Changes show instantly (optimistic), then are synced with the server and rolled back if that fails.
 const likeOverride = new Map<number, boolean>();
 const saveOverride = new Map<number, boolean>();
 const addedComments = new Map<number, FeedComment[]>();
@@ -16,8 +15,12 @@ type PostState = { liked?: boolean; saved?: boolean; newComments: FeedComment[] 
 let snapshots = new Map<number, PostState>();
 const listeners = new Set<() => void>();
 
+// Local save changes (true = saved here, false = unsaved here), for the "want to go" list
+let saveSnapshot: ReadonlyMap<number, boolean> = new Map();
+
 function emit() {
   snapshots = new Map();
+  saveSnapshot = new Map(saveOverride);
   listeners.forEach((l) => l());
 }
 
@@ -43,15 +46,15 @@ function getSnapshot(postId: number): PostState {
   return snapshot;
 }
 
-// Follows: API authors by user id, sample authors by name
-const followOverride = new Map<string, boolean>();
+// Follows by author user id
+const followOverride = new Map<number, boolean>();
 
 /** After reloading the feed the server counts already include our changes */
 export function resetRemoteOverrides() {
   for (const map of [likeOverride, saveOverride, addedComments]) {
-    for (const id of [...map.keys()]) if (id > 0) map.delete(id);
+    map.clear();
   }
-  for (const key of [...followOverride.keys()]) if (key.startsWith("id:")) followOverride.delete(key);
+  followOverride.clear();
   emit();
 }
 
@@ -60,12 +63,14 @@ function toggleFlag(map: Map<number, boolean>, post: FeedPost, current: boolean,
   const next = !current;
   map.set(post.id, next);
   emit();
-  if (!post.remote) return;
   apiFetch(`/posts/${post.id}/${path}`, { method: next ? "POST" : "DELETE" }).catch(() => {
     map.set(post.id, current);
     emit();
   });
 }
+
+/** Posts saved or unsaved since the last feed reload */
+export const useSaveOverrides = () => useSyncExternalStore(subscribe, () => saveSnapshot);
 
 export function usePostState(post: FeedPost) {
   const state = useSyncExternalStore(subscribe, () => getSnapshot(post.id));
@@ -84,10 +89,8 @@ export function usePostState(post: FeedPost) {
     toggleLike: () => toggleFlag(likeOverride, post, liked, "like"),
     toggleSave: () => toggleFlag(saveOverride, post, saved, "save"),
     /** Throws when the server rejects the comment */
-    addComment: async (text: string, authorName: string) => {
-      const comment: FeedComment = post.remote
-        ? await apiFetch<FeedComment>(`/posts/${post.id}/comments`, { method: "POST", body: { text } })
-        : { id: `new-${Date.now()}`, author: { name: authorName }, text, createdAt: new Date().toISOString() };
+    addComment: async (text: string) => {
+      const comment = await apiFetch<FeedComment>(`/posts/${post.id}/comments`, { method: "POST", body: { text } });
       addedComments.set(post.id, [...(addedComments.get(post.id) ?? []), comment]);
       emit();
     },
@@ -110,18 +113,16 @@ export function useSeenMoments() {
 }
 
 export function useFollowing(author: FeedPost["author"], initial = false) {
-  const key = author.id ? `id:${author.id}` : `name:${author.name}`;
-  const override = useSyncExternalStore(subscribe, () => followOverride.get(key));
+  const override = useSyncExternalStore(subscribe, () => followOverride.get(author.id));
   const isFollowing = override ?? initial;
   return {
     isFollowing,
     toggleFollow: () => {
       const next = !isFollowing;
-      followOverride.set(key, next);
+      followOverride.set(author.id, next);
       emit();
-      if (!author.id) return;
       apiFetch(`/users/${author.id}/follow`, { method: next ? "POST" : "DELETE" }).catch(() => {
-        followOverride.set(key, !next);
+        followOverride.set(author.id, !next);
         emit();
       });
     },

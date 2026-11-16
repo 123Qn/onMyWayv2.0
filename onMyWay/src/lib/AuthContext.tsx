@@ -5,6 +5,7 @@ import { getGoogleIdToken, signOutGoogle } from "./googleAuth";
 import { refreshMyProfile } from "./profileApi";
 import { resetMyProfile } from "./rewards";
 import { refreshUnreadCount, resetNotifications } from "./notifications";
+import { resetTripRecorder, restoreTrip } from "./tripRecorder";
 
 type AuthState = {
   user: User | null;
@@ -45,8 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) {
       resetMyProfile();
       resetNotifications();
+      resetTripRecorder().catch(() => {});
       return;
     }
+    restoreTrip().catch(() => {});
     refreshMyProfile(user.id).catch(() => {});
     refreshUnreadCount().catch(() => {});
     // Check for new notifications every minute while signed in

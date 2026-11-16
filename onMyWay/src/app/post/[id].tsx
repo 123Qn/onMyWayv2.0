@@ -20,9 +20,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { compactNumber, flagEmoji, timeAgo } from "../../lib/format";
-import { getMockComments, getPostById, isByUser, postKind, type FeedComment, type TripStop } from "../../lib/mockFeed";
+import { getPostById, isByUser, postKind, type FeedComment, type TripStop } from "../../lib/feed";
 import { fetchComments } from "../../lib/postsApi";
 import { useFollowing, usePostState } from "../../lib/postStore";
+import { useTripRecorder } from "../../lib/tripRecorder";
 import { colors, font, radius } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
@@ -45,17 +46,24 @@ function PostDetail({ postId }: { postId: number }) {
   const { liked, saved, likes, wantToGo, newComments, toggleLike, toggleSave, addComment } = usePostState(post);
   const isMine = isByUser(post, user);
   const frame = useAuthorFrame(post.author, isMine);
-  // API posts load their real comments; sample posts use generated ones
   const [loadedComments, setLoadedComments] = useState<FeedComment[]>([]);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
   const { isFollowing, toggleFollow } = useFollowing(post.author, post.followingAuthor);
   const kind = postKind(post);
-  const companions = post.companions ?? [];
   // A trip shows its route; a moment shows where it was taken; a question has no map
   const hasMap = kind !== "question" && post.stops.length > 0;
-  const goLabel = kind === "trip" ? t("post.goOnTrip") : t("post.getDirections");
+  const recorder = useTripRecorder();
+  const tripRunning = recorder.run?.postId === post.id;
+  const goLabel = kind === "trip" ? (tripRunning ? t("trip.continue") : t("post.goOnTrip")) : t("post.getDirections");
+  // Trips open the in-app trip map; a single place still opens Google Maps
+  const go = () => {
+    if (kind === "trip") {
+      setMapOpen(false);
+      router.push({ pathname: "/trip/[id]", params: { id: String(post.id) } });
+    } else openDirections(post.stops);
+  };
   const mapSubtitle = kind === "trip" ? stopsLabel(post.stops.length) : post.place.country;
 
   // Top bar: buttons stay fixed; its white background and title fade in once the hero scrolls away
@@ -71,16 +79,14 @@ function PostDetail({ postId }: { postId: number }) {
   });
 
   useEffect(() => {
-    if (!post.remote) return;
     fetchComments(post.id).then(setLoadedComments, () => {});
-  }, [post.id, post.remote]);
+  }, [post.id]);
 
   const comments = useMemo(() => {
     // Comments I just added may also be in the loaded list
     const added = new Set(newComments.map((c) => c.id));
-    const base = post.remote ? loadedComments.filter((c) => !added.has(c.id)) : getMockComments(post);
-    return [...base, ...newComments];
-  }, [post, loadedComments, newComments]);
+    return [...loadedComments.filter((c) => !added.has(c.id)), ...newComments];
+  }, [loadedComments, newComments]);
   const commentCount = Math.max(post.comments + newComments.length, comments.length);
 
   const share = () => {
@@ -92,7 +98,7 @@ function PostDetail({ postId }: { postId: number }) {
     if (!text || !user || sending) return;
     setSending(true);
     try {
-      await addComment(text, user.name);
+      await addComment(text);
       setDraft("");
     } catch (e) {
       Alert.alert(e instanceof Error ? e.message : t("common.genericError"));
@@ -138,9 +144,7 @@ function PostDetail({ postId }: { postId: number }) {
             <View style={styles.authorText}>
               <Text style={styles.authorName}>{post.author.name}</Text>
               <Text style={styles.muted} numberOfLines={1}>
-                {companions.length > 0
-                  ? `${t("feed.withOne", { name: companions.join(", ") })} · ${timeAgo(post.createdAt)}`
-                  : timeAgo(post.createdAt)}
+                {timeAgo(post.createdAt)}
               </Text>
             </View>
             {!isMine ? (
@@ -207,11 +211,11 @@ function PostDetail({ postId }: { postId: number }) {
               </Pressable>
 
               <View style={styles.goButton}>
-                <PrimaryButton title={goLabel} icon="navigate" onPress={() => openDirections(post.stops)} />
+                <PrimaryButton title={goLabel} icon="navigate" onPress={go} />
                 {post.tookTrip || wantToGo ? (
                   <View style={styles.tookTrip}>
                     <FaceStack
-                      names={getMockComments(post).map((c) => c.author.name)}
+                      names={post.commenters ?? []}
                       text={[
                         post.tookTrip ? t("post.tookTrip", { count: compactNumber(post.tookTrip) }) : "",
                         wantToGo ? t("post.wantToGoCount", { count: compactNumber(wantToGo) }) : "",
@@ -225,18 +229,6 @@ function PostDetail({ postId }: { postId: number }) {
 
               {kind === "trip" ? <TripStops stops={post.stops} /> : null}
             </>
-          ) : null}
-
-          {post.bestTime ? (
-            <View style={styles.infoCard}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="sunny" size={20} color={colors.deepGreen} />
-              </View>
-              <View style={styles.infoText}>
-                <Text style={styles.infoLabel}>{t("post.bestTime")}</Text>
-                <Text style={styles.infoValue}>{post.bestTime}</Text>
-              </View>
-            </View>
           ) : null}
 
           <View style={styles.divider} />
@@ -280,7 +272,7 @@ function PostDetail({ postId }: { postId: number }) {
             </View>
           </View>
           <View style={[styles.mapModalBottom, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <PrimaryButton title={goLabel} icon="navigate" onPress={() => openDirections(post.stops)} />
+            <PrimaryButton title={goLabel} icon="navigate" onPress={go} />
           </View>
         </View>
       </Modal>
@@ -481,27 +473,6 @@ const styles = StyleSheet.create({
     fontWeight: font.regular,
     marginTop: 14,
   },
-
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginTop: 18,
-    padding: 14,
-    borderRadius: radius.md,
-    backgroundColor: colors.softGray,
-  },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.limeTint,
-  },
-  infoText: { flex: 1, gap: 2 },
-  infoLabel: { color: colors.textMuted, fontSize: 13, fontWeight: font.regular },
-  infoValue: { color: colors.inkBlack, fontSize: 15, fontWeight: font.bold },
 
   statsRow: { flexDirection: "row", gap: 24, marginTop: 18 },
   stat: { flexDirection: "row", alignItems: "center", gap: 6 },

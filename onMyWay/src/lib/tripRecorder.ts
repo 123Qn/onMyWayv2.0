@@ -12,7 +12,8 @@ import { colors } from "./theme";
 
 export const TRIP_TASK = "onmyway-trip-location";
 const ACTIVE_KEY = "onmyway.activeTrip";
-const INTERVAL_MS = 3 * 60 * 1000; // between 2 and 5 minutes
+// Every 3 minutes in real builds; every 15 s in development so a fake-GPS drive can be tested quickly
+const INTERVAL_MS = __DEV__ ? 15 * 1000 : 3 * 60 * 1000;
 const MIN_DISTANCE_M = 50;
 
 export type TripRun = {
@@ -61,8 +62,8 @@ const toPoint = (l: Location.LocationObject): PointInput => ({
 });
 
 async function sendPoints(locations: Location.LocationObject[]) {
-  // Mocked (fake GPS) fixes never count
-  const real = locations.filter((l) => !l.mocked);
+  // Mocked (fake GPS) fixes never count in real builds; development accepts them for testing
+  const real = locations.filter((l) => __DEV__ || !l.mocked);
   if (real.length === 0) return;
   const latest = real[real.length - 1];
   setState({ position: { latitude: latest.coords.latitude, longitude: latest.coords.longitude, accuracy: latest.coords.accuracy } });
@@ -88,7 +89,7 @@ let watcher: Location.LocationSubscription | null = null;
 async function startForegroundWatch() {
   watcher?.remove();
   watcher = await Location.watchPositionAsync(
-    { accuracy: Location.Accuracy.Balanced, timeInterval: INTERVAL_MS, distanceInterval: MIN_DISTANCE_M },
+    { accuracy: Location.Accuracy.High, timeInterval: INTERVAL_MS, distanceInterval: MIN_DISTANCE_M },
     (l) => sendPoints([l]).catch(() => {})
   );
 }
@@ -97,7 +98,8 @@ async function startUpdates(): Promise<RecorderState["mode"]> {
   const background = await Location.requestBackgroundPermissionsAsync().catch(() => null);
   if (background?.granted) {
     await Location.startLocationUpdatesAsync(TRIP_TASK, {
-      accuracy: Location.Accuracy.Balanced,
+      // GPS-grade fixes: "Balanced" relies on Wi-Fi/cell and drifts on roads (and gets no fixes on emulators)
+      accuracy: Location.Accuracy.High,
       timeInterval: INTERVAL_MS,
       distanceInterval: MIN_DISTANCE_M,
       deferredUpdatesInterval: INTERVAL_MS,
@@ -163,8 +165,8 @@ export async function restoreTrip() {
   await SecureStore.setItemAsync(ACTIVE_KEY, JSON.stringify({ runId: run.id, postId: run.postId }));
   const position = run.lastPosition ? { latitude: run.lastPosition.latitude, longitude: run.lastPosition.longitude } : null;
   setState({ run, position });
-  const running = await Location.hasStartedLocationUpdatesAsync(TRIP_TASK).catch(() => false);
-  setState({ mode: running ? "background" : await startUpdates() });
+  // (Re)start with the current options; calling it again on a running task just updates them
+  setState({ mode: await startUpdates() });
 }
 
 /** Sign-out: stop recording on this device (the server run stays until ended) */

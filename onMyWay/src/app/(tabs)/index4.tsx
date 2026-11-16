@@ -9,7 +9,7 @@ import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
 import { compactNumber } from "../../lib/format";
 import { BADGES, getBadge, useRewards, type BadgeProgress } from "../../lib/rewards";
-import { postKind, type FeedPost } from "../../lib/mockFeed";
+import { postKind, type FeedPost } from "../../lib/feed";
 import { fetchUserPosts, refreshMyProfile } from "../../lib/profileApi";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { AvatarFrame } from "../../components/AvatarFrame";

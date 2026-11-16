@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { t } from "../i18n";
-import type { PlaceCategory } from "../lib/mockFeed";
+import type { PlaceCategory } from "../lib/feed";
 import { colors, font } from "../lib/theme";
 
 export type CategoryFilter = PlaceCategory | "all";

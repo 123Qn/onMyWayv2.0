@@ -10,6 +10,7 @@ const uploadMedia = async (req, res) => {
 };
 
 const feed = async (req, res) => ok(res, await postService.listFeed(req.user, req.query, urlFor(req)));
+const saved = async (req, res) => ok(res, await postService.listSaved(req.user, req.query, urlFor(req)));
 const create = async (req, res) => ok(res, await postService.createPost(req.user, req.body, urlFor(req)), 201);
 const show = async (req, res) => ok(res, await postService.getPost(req.user, req.params.id, urlFor(req)));
 
@@ -32,6 +33,7 @@ const unfollow = async (req, res) => ok(res, await postService.setFollow(req.use
 module.exports = {
     uploadMedia,
     feed,
+    saved,
     create,
     show,
     remove,

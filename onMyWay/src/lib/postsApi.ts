@@ -1,11 +1,8 @@
 import { File } from "expo-file-system";
 import { apiFetch } from "./api";
-import { setRemotePosts, upsertRemotePost, type FeedComment, type FeedPost, type PlaceCategory, type PostKind } from "./mockFeed";
+import { setFeedPosts, upsertFeedPost, type FeedComment, type FeedPost, type PlaceCategory, type PostKind } from "./feed";
 import { resetRemoteOverrides } from "./postStore";
 import { refreshMyProfile } from "./profileApi";
-
-// The API returns posts in the app's FeedPost shape; mark them so likes etc. go to the server
-export const asRemote = (post: FeedPost): FeedPost => ({ ...post, remote: true });
 
 export type UploadedPhoto = { id: number; url: string };
 
@@ -39,8 +36,8 @@ export type NewPost = {
 };
 
 export async function createPost(input: NewPost) {
-  const post = asRemote(await apiFetch<FeedPost>("/posts", { method: "POST", body: input }));
-  upsertRemotePost(post);
+  const post = await apiFetch<FeedPost>("/posts", { method: "POST", body: input });
+  upsertFeedPost(post);
   // A verified post can unlock badges: refresh my stats in the background
   if (post.author.id) refreshMyProfile(post.author.id).catch(() => {});
   return post;
@@ -48,10 +45,10 @@ export async function createPost(input: NewPost) {
 
 /** Reload the latest posts from the server into the feed */
 export async function refreshFeed() {
-  const posts = (await apiFetch<FeedPost[]>("/posts?limit=50")).map(asRemote);
+  const posts = await apiFetch<FeedPost[]>("/posts?limit=50");
   // Fresh counts from the server replace the optimistic local ones
   resetRemoteOverrides();
-  setRemotePosts(posts);
+  setFeedPosts(posts);
 }
 
 export const fetchComments = (postId: number) => apiFetch<FeedComment[]>(`/posts/${postId}/comments`);
