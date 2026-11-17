@@ -93,7 +93,7 @@ export default function ProfileScreen() {
                 <View className="h-2 overflow-hidden rounded bg-line">
                   <View className="h-full rounded bg-lime-green" style={{ width: `${(level.current / level.needed) * 100}%` }} />
                 </View>
-                <Text className="text-center text-xs font-bold text-muted">{t("rewards.xp", { current: level.current, next: level.needed })}</Text>
+                <Text className="text-center text-xs font-bold text-muted">{level.max ? t("rewards.maxLevel") : t("rewards.xp", { current: level.current, next: level.needed })}</Text>
               </View>
             </>
           }

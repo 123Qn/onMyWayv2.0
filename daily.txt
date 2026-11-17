@@ -167,12 +167,38 @@ DA LAM HOM NAY
    - Sua: khi tab bar an (cuon xuong) nut robot bi de len thanh dieu huong 3 nut cua Android
      -> AssistantButton nang len insets.bottom theo tabBarProgress (2 lop: lift JS-driven, float native driver).
 
+14. Bai post cho tai khoan chinh thuc OnMyWay (#77, onmyway.app.contact@gmail.com) - CHUA COMMIT
+   - Backend/src/db/seedOfficial.js + "npm run db:seed:official" (chay sau db:seed:demo). Tim tai khoan theo
+     OFFICIAL_EMAIL (mac dinh email tren). Chay lai an toan: chi thay cac bai trong script (khop theo caption).
+   - 6 bai: moment chao mung (Saigon), 3 trip "onMyWay pick" (Hanoi 2 ngay, Ninh Binh 1 ngay, Mien Trung bang tau),
+     moment Ha Long, question "Sa Pa hay Krabi?". 14 comment (team tra loi dang thread), 33 like,
+     10 user demo follow -> tai khoan mo khoa huy hieu "Making Friends". verified = FALSE (khong co GPS that).
+   - Anh Unsplash da kiem tra tai duoc va dung noi dung.
+   - Celebration.tsx: bam ra ngoai (nen toi) cung dong popup huy hieu (truoc chi dong bang nut back).
+
+15. Tai khoan chinh thuc = max level - CHUA COMMIT
+   - Migration 009_user_roles.sql: users.role ('user' | 'official'). seedOfficial.js dat role = 'official'.
+   - API profile tra stats.official; app (rewards.ts): official -> mo het 100 huy hieu + Lv. 20 Globetrotter
+     (thanh XP day), mo het 12 khung avatar ke ca Aurora. Thong ke du lich / bang xep hang van dung so lieu that.
+   - DA SUA can bang level: truoc moi level ton them 100 XP -> ca 100 huy hieu (9230 XP) chi duoc Lv. 14,
+     khong ai dat duoc Voyager / Globetrotter / khung Aurora. Gio: moi level ton them 40 XP, Lv. 20 = 7600 XP
+     (~80% tong XP), Lv. 20 la toi da (MAX_LEVEL), thanh XP day + chu "Max level".
+     User demo len 1-2 level (vd Lena 16 huy hieu: Lv. 3 -> Lv. 5).
+   - Luc test minh lo bam trung nut "Equip" (khung Jet Stream) tren dien thoai -> da tra lai khung Classic trong DB.
+   - Luu y moi truong: app tren dien thoai tim Metro o localhost:8082 (bundle location da doi) ->
+     can "adb reverse tcp:8082 tcp:8081" ngoai tcp:8081.
+
 CACH CHAY LAI MOI TRUONG
 - Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
 - cd Backend && npm run dev                       (API cong 3000)
 - cd onMyWay && npx expo start                    (Metro 8081)
 - Ollama tu chay nen sau khi cai (cong 11434); cd AI_bot && npm start   (AI_bot 3100)
 - Emulator: emulator -avd Pixel_4 ; adb reverse tcp:8081 tcp:8081
+- Dien thoai that (f7237192, cam USB): app tim Metro o cong 8082 -> them
+    adb reverse tcp:8082 tcp:8081
+  Neu dien thoai ket o man hinh splash / "Unable to load script" -> thieu dong tren hoac Metro cu bi treo.
+- DB moi: cd Backend && npm run db:migrate (co migration 009_user_roles), roi
+    npm run db:seed:demo && npm run db:seed:official   (tai khoan OnMyWay phai dang ky truoc trong app)
 - App goi API qua EXPO_PUBLIC_API_URL trong onMyWay/.env.local = http://192.168.0.12:3000/api
   (doi neu IP may thay doi: ipconfig)
 - Gia lap di chuyen: adb emu geo fix <lng> <lat>  (kinh do truoc). Server bo diem > 250 km/h,
@@ -184,8 +210,16 @@ CACH CHAY LAI MOI TRUONG
 - Chay lai seed demo (npm run db:seed:demo) se xoa va tao lai bai demo voi id moi, nen cac chuyen
   cu cua user khong phai demo (vd Alex Lee) se hien "Removed trip" (km van giu).
 
+KET THUC SESSION 2026-11-17
+- Da tat het: backend, Metro, AI_bot, Ollama. Docker Postgres (onmyway-db) van chay.
+- CHUA COMMIT: muc 9 -> 15 (Tailwind/Uniwind, AI_bot + toi uu + traveler spots, robot "Way",
+  bai post tai khoan OnMyWay, role official + max level, can bang level).
+  Nen commit tach nhom: (1) Tailwind  (2) AI_bot + Backend /ai  (3) robot + nut AI
+  (4) seedOfficial + migration 009 + rewards/level.
+- Kiem tra cuoi: tsc OK; AI_bot unit 19/19, eval 20/20; smoke API 22/22; da xem tren dien thoai that.
+
 VIEC TIEP THEO
-- Commit muc 7 + 8.
+- Commit muc 9 -> 15 (xem tren).
 - Test tren emulator nhung phan chua test: doi anh dai dien, man Followers/Following, nut xoa bai,
   cuon tai them feed, nut Follow trong app.
 - Con thieu (de xuat, chua lam): quen mat khau, thong bao day (push), bao cao/chan nguoi dung,

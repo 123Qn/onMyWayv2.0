@@ -52,7 +52,8 @@ export const rarityColor: Record<Rarity, { main: string; light: string; dark: st
 // ---------------------------------------------------------------------------
 // Stats → badges → XP → level. Stats come from the API (verified posts only).
 // ---------------------------------------------------------------------------
-export type TravelStats = Record<Metric, number> & { specials: SpecialBadgeId[] };
+// official: an onMyWay team account, which has every badge and so the top level
+export type TravelStats = Record<Metric, number> & { specials: SpecialBadgeId[]; official?: boolean };
 
 export const EMPTY_STATS: TravelStats = {
   countries: 0,
@@ -85,6 +86,7 @@ export const badgeXp = (badge: BadgeDef) => (NO_XP.has(badge.id) ? 0 : XP_BY_RAR
 export type BadgeProgress = { badge: BadgeDef; unlocked: boolean; current: number; goal: number };
 
 export function badgeProgress(badge: BadgeDef, stats: TravelStats): BadgeProgress {
+  if (stats.official) return { badge, unlocked: true, current: badge.goal ?? 1, goal: badge.goal ?? 1 };
   if (badge.metric && badge.goal) {
     const current = stats[badge.metric] ?? 0;
     return { badge, unlocked: current >= badge.goal, current: Math.min(current, badge.goal), goal: badge.goal };
@@ -93,21 +95,33 @@ export function badgeProgress(badge: BadgeDef, stats: TravelStats): BadgeProgres
   return { badge, unlocked, current: unlocked ? 1 : 0, goal: 1 };
 }
 
-/** Total XP needed to reach `level` (level 1 = 0 XP, each level costs 100 more than the last) */
-const xpForLevel = (level: number) => 50 * level * (level - 1);
+/** The top level: Globetrotter, and the Aurora frame */
+export const MAX_LEVEL = 20;
+
+/**
+ * Total XP needed to reach `level` (level 1 = 0 XP, each level costs 40 more than the last).
+ * The top level takes 7,600 XP, about 80% of what all badges give: real travelers can reach it
+ * without collecting every badge.
+ */
+const xpForLevel = (level: number) => 20 * level * (level - 1);
 
 export type LevelTitle = "wanderer" | "explorer" | "pathfinder" | "trailblazer" | "voyager" | "globetrotter";
 
 export function levelInfo(xp: number) {
   let level = 1;
-  while (xp >= xpForLevel(level + 1)) level++;
+  while (level < MAX_LEVEL && xp >= xpForLevel(level + 1)) level++;
   const floor = xpForLevel(level);
   const next = xpForLevel(level + 1);
   const title: LevelTitle =
     level >= 20 ? "globetrotter" : level >= 15 ? "voyager" : level >= 10 ? "trailblazer"
       : level >= 6 ? "pathfinder" : level >= 3 ? "explorer" : "wanderer";
-  return { level, title, current: xp - floor, needed: next - floor };
+  // max: the bar shows full and "Max level" instead of XP to the next level
+  if (level === MAX_LEVEL) return { level, title, current: 1, needed: 1, max: true };
+  return { level, title, current: xp - floor, needed: next - floor, max: false };
 }
+
+// What official onMyWay accounts have
+const TOP_LEVEL = levelInfo(xpForLevel(MAX_LEVEL));
 
 export type Rewards = {
   progress: BadgeProgress[];
@@ -120,7 +134,7 @@ export function computeRewards(stats: TravelStats): Rewards {
   const progress = BADGES.map((b) => badgeProgress(b, stats));
   const unlocked = progress.filter((p) => p.unlocked);
   const ids = new Set(unlocked.map((p) => p.badge.id));
-  const level = levelInfo(unlocked.reduce((sum, p) => sum + badgeXp(p.badge), 0));
+  const level = stats.official ? TOP_LEVEL : levelInfo(unlocked.reduce((sum, p) => sum + badgeXp(p.badge), 0));
   return {
     progress,
     unlocked,

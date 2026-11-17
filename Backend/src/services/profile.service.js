@@ -112,7 +112,8 @@ const getProfile = async (viewer, userId) => {
         },
         counts: { posts: social.posts, followers: social.followers, following: social.following },
         followedByViewer: social.followed_by_viewer,
-        stats: computeStats(posts, social, user.created_at),
+        // official: the app unlocks every badge (and so the top level) for onMyWay team accounts
+        stats: { ...computeStats(posts, social, user.created_at), official: user.role === "official" },
     };
 };
 

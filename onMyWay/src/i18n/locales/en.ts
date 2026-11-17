@@ -348,6 +348,7 @@ export const en = {
   rewards: {
     level: "Lv. {{level}}",
     xp: "{{current}} / {{next}} XP",
+    maxLevel: "Max level",
     levelTitles: {
       wanderer: "Wanderer",
       explorer: "Explorer",

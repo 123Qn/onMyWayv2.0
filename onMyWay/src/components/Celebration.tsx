@@ -35,6 +35,8 @@ export function CelebrationHost() {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <View className="flex-1 items-center justify-center bg-ink/60 p-6">
+        {/* Tapping the dimmed backdrop closes it too */}
+        <Pressable className="absolute inset-0" onPress={close} accessibilityLabel={t("celebrate.awesome")} />
         <Confetti />
         <View className="items-center gap-3 self-stretch rounded-[28px] bg-white p-6">
           {levelUp ? (
