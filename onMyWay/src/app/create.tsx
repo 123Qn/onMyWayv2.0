@@ -621,15 +621,18 @@ function PhotoSlot({
           </Text>
         </View>
       ) : null}
-      <Pressable
-        onPress={onPick}
-        accessibilityRole="button"
-        accessibilityLabel={t("create.changePhoto")}
-        className="absolute bottom-2.5 right-2.5 flex-row items-center gap-[5px] rounded-[14px] bg-ink/65 px-2.5 py-1.5 active:opacity-70"
-      >
-        <Ionicons name="swap-horizontal" size={14} color={colors.white} />
-        <Text className="text-xs font-bold text-white">{t("create.changePhoto")}</Text>
-      </Pressable>
+      {/* Positioned by a wrapper: absolute + active: on the same Pressable loses its offsets */}
+      <View className="absolute bottom-2.5 right-2.5">
+        <Pressable
+          onPress={onPick}
+          accessibilityRole="button"
+          accessibilityLabel={t("create.changePhoto")}
+          className="flex-row items-center gap-[5px] rounded-[14px] bg-ink/65 px-2.5 py-1.5 active:opacity-70"
+        >
+          <Ionicons name="swap-horizontal" size={14} color={colors.white} />
+          <Text className="text-xs font-bold text-white">{t("create.changePhoto")}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

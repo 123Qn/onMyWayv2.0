@@ -10,6 +10,7 @@ import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors } from "../../lib/theme";
 import { useRewards } from "../../lib/rewards";
+import { AssistantButton } from "../../components/AssistantButton";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { Wordmark } from "../../components/BrandLogo";
 import { CategoryChips, type CategoryFilter } from "../../components/CategoryChips";
@@ -147,6 +148,8 @@ export default function FeedScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
+
+      <AssistantButton />
     </Screen>
   );
 }

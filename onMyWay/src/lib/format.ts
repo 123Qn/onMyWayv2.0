@@ -24,6 +24,22 @@ export const stopsLabel = (count: number, short = false) =>
       ? t("post.stopsCountOne")
       : t("post.stopsCount", { count });
 
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Best months as ranges, wrapping over the new year: [11,12,1,2,3,4] -> "Nov – Apr", [3,4,10,11] -> "Mar – Apr, Oct – Nov" */
+export function monthRanges(months: number[]) {
+  const set = new Set(months);
+  if (set.size === 12) return t("assistant.allYear");
+  const starts = [...set].filter((m) => !set.has(m === 1 ? 12 : m - 1)).sort((a, b) => a - b);
+  return starts
+    .map((start) => {
+      let end = start;
+      while (set.has(end === 12 ? 1 : end + 1)) end = end === 12 ? 1 : end + 1;
+      return start === end ? SHORT_MONTHS[start - 1] : `${SHORT_MONTHS[start - 1]} – ${SHORT_MONTHS[end - 1]}`;
+    })
+    .join(", ");
+}
+
 // "VN" -> 🇻🇳 (regional indicator symbols)
 export const flagEmoji = (code: string) =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));

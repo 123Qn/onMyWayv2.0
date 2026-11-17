@@ -1,0 +1,21 @@
+{
+  "name": "onmyway-ai-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "onMyWay travel assistant: answers travel questions from onMyWay data with a local LLM (Ollama)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "ask": "node scripts/ask.js",
+    "eval": "node scripts/eval.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

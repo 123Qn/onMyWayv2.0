@@ -10,4 +10,5 @@ router.use('/posts', require('./post.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/', require('./tripRun.routes'));
 router.use('/', require('./social.routes'));
+router.use('/', require('./ai.routes'));
 module.exports = router;

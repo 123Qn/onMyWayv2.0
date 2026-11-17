@@ -110,10 +110,68 @@ DA LAM HOM NAY
    - Thay doi nho co chu y: chon loai bai o Create va chip danh muc dung SegmentedControl/Chip chung
      nen bo goc tron hon mot chut, dong bo voi cac man khac.
 
+10. AI travel assistant (AI_bot) - CHUA COMMIT
+   - Chay LOCAL bang Ollama (da cai qua winget, v0.40.16) + model qwen2.5:3b (1.9GB, chay 100% GPU RTX 4050,
+     ~1-2s/cau). Khong dung API ngoai, khong can key.
+   - AI_bot/ (Node, port 3100, chi localhost): understand.js (doc thang/mua/loai/quoc gia/tag, tieng Viet co dau
+     va khong dau, tranh nham "nhat"/"chua"/"den"), retrieve.js (xep hang places + bai cong dong),
+     assistant.js (prompt chi dung du lieu, ket luan thoi diem tinh san, loc id bia, the theo ten trong cau tra
+     loi, quoc gia khong co du lieu -> tra loi co dinh, Ollama tat -> tra loi tu ket qua tim kiem),
+     llm.js (Ollama /api/chat + JSON schema), server.js. 13 test (npm test). Thu nhanh: npm run ask -- "...".
+     Doc AI_bot/README.md.
+   - Backend: seed 002_places_world.sql (them 32 diem den, tong 44), migration 008 (ai_messages.post_ids),
+     services/ai.service.js + routes/ai.routes.js: POST /ai/chat, GET /ai/conversations(/:id), DELETE.
+     Bien AI_BOT_URL (mac dinh http://127.0.0.1:3100).
+   - App: app/assistant.tsx (chat, cau hoi goi y, the diem den + nut mo ban do, the bai cong dong),
+     lib/assistantApi.ts, nut AI noi o goc phai duoi Home. Da test tren emulator OK.
+   - Luu y: AI_bot dung AI_BOT_PORT/AI_BOT_HOST (KHONG dung PORT/HOST vi trung voi Backend .env).
+   - Uniwind: Pressable vua "absolute bottom-*" vua "active:" bi mat vi tri -> boc View absolute ben ngoai.
+   - Han che: model 3B doi khi tron chi tiet (vd "Kyoto thang 4 ... la thu"). Muon tot hon: qwen2.5:7b (cham hon).
+
+11. Toi uu AI bot - CHUA COMMIT
+   - Them bo danh gia: npm run eval (16 cau Viet/Anh, kiem tra ngon ngu, dia diem, ket luan thoi diem, khong bia).
+     Truoc: 13/16, 1.18s. Sau: 16/16 on dinh 3 lan lien tiep, ~1.2s/cau.
+   - Chat luong: chi gui ghi chu mua / canh theo mua dung thang hoi; bo noi trai mua khi co thoi gian;
+     ghi ro ly do phu hop; cau "X thang Y co nen di khong" mo dau bang cau ket luan do code viet;
+     nhan so nhieu ("blossoms"), ten dinh lien ("sai gon"="saigon"), tu khoa an uong tieng Viet.
+   - Toc do: nap model ngay khi AI_bot khoi dong (2.7s), giu tren GPU khi dang chay, go khi tat;
+     gioi han 320 token; cache cau hoi dau 10 phut (hoi lai: ~0ms, qua Backend ~125ms).
+     Cau dau tien qua Backend: ~1.9s (truoc: ~4s khi nguoi, ~45s sau khi khoi dong lai may).
+   - 19 unit test (npm test).
+
+12. Linh vat robot "Way" cho nut AI - CHUA COMMIT
+   - components/AssistantMascot.tsx: robot SVG (mau thuong hieu, mat lime chop mat, mood "thinking" = 3 cham)
+     + hook useFloat (nhun len xuong).
+   - components/AssistantButton.tsx: nut noi o Home (vien lime, robot bay nhe), Home chi goi <AssistantButton />.
+   - assistant.tsx: robot o man chao, avatar moi tin nhan, va khi dang nghi (mood thinking).
+   - Chuyen dong (Reanimated 4, animatedProps tren SVG): dau nghieng, ang-ten dung dua + dau phat sang,
+     mat liec trai/phai + chop mat, luc "thinking" 3 cham nhay lan luot. Prop animated={false} cho avatar
+     trong danh sach tin nhan (do ton tai nguyen).
+   - tsc OK, da xem tren emulator (khong crash).
+
+13. AI biet tat ca dia diem trong DB - CHUA COMMIT
+   - Truoc: AI chi biet 44 dia diem trong bang places; 81 diem dung trong post (Eiffel, Colosseum, Times Square...)
+     khong co trong places (posts.place_id deu NULL) -> AI khong biet.
+   - retrieve.js: them "traveler spots" = moi diem dung trip + moment + place_name cua post (cache 60s, post moi
+     tu cap nhat). Gan vao dia diem curated gan nhat <= 40 km (Colosseum -> Rome, khong phai Cinque Terre).
+     Hoi dich danh 1 spot -> chi giu dia diem curated cung nuoc, gan nhat truoc; bai post cua spot len dau.
+     Hoi 1 dia diem curated (Kyoto, Paris) -> kem cac spot gan do (Pontocho, Yasaka / Eiffel, Arc de Triomphe).
+     Nuoc chi co spot (vd chua co places) khong con bi tra loi "chua co du lieu".
+   - assistant.js: muc TRAVELER SPOTS trong prompt (ghi chu cua traveler, khong co du lieu mua -> cam phan xet thang);
+     "Eiffel thang 12 co nen di?" -> cau ket luan dung du lieu mua cua Paris; bo cau lo id ("Check out posts 256...");
+     khi da co cau ket luan thi bo het cau noi ve thoi diem cua model (truoc bi lap 2-3 lan).
+   - Eval 20/20 x2 (them 4 cau spot), ~1.4s/cau; unit 19/19; smoke API 22/22.
+   - Luu y: emulator bi dong giua chung; adb dang noi voi dien thoai that f7237192.
+   - Test tren dien thoai that: hoi "Eiffel Tower?" -> tra loi tu ghi chu traveler + card Paris + 2 bai Eiffel. OK.
+     (Ban phim Telex tren may bien "visit" thanh "vịit" khi go bang adb -> go cau khong dau ngan.)
+   - Sua: khi tab bar an (cuon xuong) nut robot bi de len thanh dieu huong 3 nut cua Android
+     -> AssistantButton nang len insets.bottom theo tabBarProgress (2 lop: lift JS-driven, float native driver).
+
 CACH CHAY LAI MOI TRUONG
 - Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
 - cd Backend && npm run dev                       (API cong 3000)
 - cd onMyWay && npx expo start                    (Metro 8081)
+- Ollama tu chay nen sau khi cai (cong 11434); cd AI_bot && npm start   (AI_bot 3100)
 - Emulator: emulator -avd Pixel_4 ; adb reverse tcp:8081 tcp:8081
 - App goi API qua EXPO_PUBLIC_API_URL trong onMyWay/.env.local = http://192.168.0.12:3000/api
   (doi neu IP may thay doi: ipconfig)

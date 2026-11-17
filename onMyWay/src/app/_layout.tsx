@@ -33,6 +33,7 @@ function RootNavigator() {
         <Stack.Screen name="user/[id]" />
         <Stack.Screen name="follows/[id]" />
         <Stack.Screen name="edit-profile" options={{ presentation: "modal" }} />
+        <Stack.Screen name="assistant" />
         <Stack.Screen name="moments" options={{ animation: "fade", presentation: "fullScreenModal" }} />
         <Stack.Screen name="create" options={{ presentation: "modal", gestureEnabled: false }} />
       </Stack.Protected>
