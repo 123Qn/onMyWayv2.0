@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { t } from "../i18n";
 import { fetchCountries, type Country } from "../lib/communityApi";
 import { flagEmoji } from "../lib/format";
-import { colors, font, radius } from "../lib/theme";
+import { colors } from "../lib/theme";
+import { Loading, ScreenHeader, SearchField } from "./ui";
 
 let cached: Country[] | null = null;
 
@@ -27,10 +28,13 @@ export function CountryPicker({
 
   useEffect(() => {
     if (!visible || cached) return;
-    fetchCountries().then((list) => {
-      cached = list;
-      setCountries(list);
-    }, () => setCountries([]));
+    fetchCountries().then(
+      (list) => {
+        cached = list;
+        setCountries(list);
+      },
+      () => setCountries([])
+    );
   }, [visible]);
 
   const shown = useMemo(() => {
@@ -40,29 +44,11 @@ export function CountryPicker({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.header}>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t("common.cancel")} hitSlop={8}>
-            <Ionicons name="close" size={24} color={colors.inkBlack} />
-          </Pressable>
-          <Text style={styles.title}>{t("editProfile.country")}</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.search}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t("editProfile.searchCountry")}
-            placeholderTextColor={colors.textMuted}
-            style={styles.searchInput}
-            autoCorrect={false}
-            selectionColor={colors.tealGreen}
-            cursorColor={colors.deepGreen}
-          />
-        </View>
+      <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+        <ScreenHeader title={t("editProfile.country")} icon="close" onBack={onClose} />
+        <SearchField value={query} onChangeText={setQuery} placeholder={t("editProfile.searchCountry")} className="mx-4 mb-2" />
         {countries === null ? (
-          <ActivityIndicator color={colors.deepGreen} style={styles.loading} />
+          <Loading className="mt-8" />
         ) : (
           <FlatList
             data={shown}
@@ -71,9 +57,9 @@ export function CountryPicker({
             contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
             ListHeaderComponent={
               value ? (
-                <Pressable onPress={() => onSelect(null)} accessibilityRole="button" style={styles.row}>
+                <Pressable onPress={() => onSelect(null)} accessibilityRole="button" className="flex-row items-center gap-3 px-5 py-3.25">
                   <Ionicons name="remove-circle-outline" size={22} color={colors.textMuted} />
-                  <Text style={[styles.name, styles.muted]}>{t("editProfile.noCountry")}</Text>
+                  <Text className="flex-1 text-base text-muted">{t("editProfile.noCountry")}</Text>
                 </Pressable>
               ) : undefined
             }
@@ -82,10 +68,10 @@ export function CountryPicker({
                 onPress={() => onSelect(item)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: item.code === value }}
-                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                className="flex-row items-center gap-3 px-5 py-3.25 active:bg-soft-gray"
               >
-                <Text style={styles.flag}>{flagEmoji(item.code)}</Text>
-                <Text style={styles.name}>{item.name}</Text>
+                <Text className="text-[22px]">{flagEmoji(item.code)}</Text>
+                <Text className="flex-1 text-base text-ink">{item.name}</Text>
                 {item.code === value ? <Ionicons name="checkmark" size={20} color={colors.deepGreen} /> : null}
               </Pressable>
             )}
@@ -95,27 +81,3 @@ export function CountryPicker({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.white },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 },
-  headerSpacer: { width: 24 },
-  title: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
-  search: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    backgroundColor: colors.softGray,
-  },
-  searchInput: { flex: 1, paddingVertical: 12, color: colors.inkBlack, fontSize: 15 },
-  loading: { marginTop: 32 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 13 },
-  pressed: { backgroundColor: colors.softGray },
-  flag: { fontSize: 22 },
-  name: { flex: 1, color: colors.inkBlack, fontSize: 16 },
-  muted: { color: colors.textMuted },
-});

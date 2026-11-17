@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from "react-native";
+import { Animated, Easing, Pressable, Text, View, useWindowDimensions, type GestureResponderEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
@@ -11,8 +10,9 @@ import { timeAgo } from "../lib/format";
 import { groupMoments, isByUser, useFeedPosts, type FeedPost } from "../lib/feed";
 import { useSeenMoments } from "../lib/postStore";
 import { useAuthorFrame } from "../lib/rewards";
-import { colors, font } from "../lib/theme";
+import { colors } from "../lib/theme";
 import { AvatarFrame } from "../components/AvatarFrame";
+import { AnimatedView, Img } from "../components/ui";
 
 const DURATION = 5000;
 
@@ -136,9 +136,9 @@ export default function MomentsScreen() {
 
   if (!group || !moment) {
     return (
-      <View style={styles.empty}>
+      <View className="flex-1 items-center justify-center bg-ink">
         <StatusBar style="light" />
-        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("moments.close")} style={styles.iconButton}>
+        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("moments.close")} className="h-11 w-11 items-center justify-center">
           <Ionicons name="close" size={28} color={colors.white} />
         </Pressable>
       </View>
@@ -147,12 +147,12 @@ export default function MomentsScreen() {
 
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-ink">
       <StatusBar style="light" />
-      <Image source={moment.imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      <Img source={moment.imageUrl} className="absolute inset-0" contentFit="cover" transition={150} />
 
       <View
-        style={StyleSheet.absoluteFill}
+        className="absolute inset-0"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchCancel={() => setPaused(false)}
@@ -167,123 +167,64 @@ export default function MomentsScreen() {
       />
 
       {/* Top: progress bars and author */}
-      <View pointerEvents="box-none" style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.bars}>
+      <View pointerEvents="box-none" className="absolute left-0 right-0 top-0 gap-3 bg-black/25 px-3 pb-6" style={{ paddingTop: insets.top + 8 }}>
+        <View className="flex-row gap-1">
           {group.moments.map((m, idx) => (
-            <View key={m.id} style={styles.barTrack}>
-              <Animated.View
-                style={[
-                  styles.barFill,
-                  {
-                    width:
-                      idx < i
-                        ? "100%"
-                        : idx > i
-                          ? "0%"
-                          : progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-                  },
-                ]}
+            <View key={m.id} className="h-[3px] flex-1 overflow-hidden rounded-sm bg-white/35">
+              <AnimatedView
+                className="h-full bg-white"
+                style={{
+                  width:
+                    idx < i
+                      ? "100%"
+                      : idx > i
+                        ? "0%"
+                        : progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                }}
               />
             </View>
           ))}
         </View>
 
-        <View style={styles.authorRow}>
+        <View className="flex-row items-center gap-1.5">
           <AvatarFrame name={moment.author.name} frame={frame} avatarSize={34} uri={moment.author.avatarUrl} />
-          <View style={styles.flex}>
-            <Text style={styles.author} numberOfLines={1}>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-white" numberOfLines={1}>
               {moment.author.name}
             </Text>
-            <Text style={styles.meta} numberOfLines={1}>
+            <Text className="text-xs text-white/80" numberOfLines={1}>
               {moment.tripDay ? `${t("feed.dayN", { count: moment.tripDay })} · ` : ""}
               {timeAgo(moment.createdAt)}
             </Text>
           </View>
-          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("moments.close")} hitSlop={10} style={styles.iconButton}>
+          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("moments.close")} hitSlop={10} className="h-11 w-11 items-center justify-center">
             <Ionicons name="close" size={28} color={colors.white} />
           </Pressable>
         </View>
       </View>
 
       {/* Bottom: place, caption, open the full post */}
-      <View pointerEvents="box-none" style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-        <View style={styles.placePill}>
+      <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 gap-2.5 bg-black/35 px-5 pt-8" style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
+        <View className="flex-row items-center gap-1.5 self-start rounded-[14px] bg-ink/70 px-2.5 py-[5px]">
           <Ionicons
             name={moment.verified ? "shield-checkmark" : "location"}
             size={14}
             color={moment.verified ? colors.limeGreen : colors.white}
           />
-          <Text style={styles.placeText} numberOfLines={1}>
+          <Text className="text-[13px] font-bold text-white" numberOfLines={1}>
             {[moment.place.name, moment.place.country].filter(Boolean).join(", ")}
           </Text>
         </View>
-        {moment.caption ? <Text style={styles.caption}>{moment.caption}</Text> : null}
+        {moment.caption ? <Text className="text-base leading-[22px] text-white">{moment.caption}</Text> : null}
         <Pressable
           onPress={() => router.push({ pathname: "/post/[id]", params: { id: String(moment.id) } })}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.viewPost, pressed && styles.pressed]}
+          className="flex-row items-center gap-1 self-start rounded-[18px] bg-white px-4 py-[9px] active:opacity-75"
         >
-          <Text style={styles.viewPostText}>{t("moments.viewPost")}</Text>
+          <Text className="text-sm font-bold text-ink">{t("moments.viewPost")}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.inkBlack} />
         </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.inkBlack },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.inkBlack },
-  flex: { flex: 1 },
-  top: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 24,
-    gap: 12,
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  bars: { flexDirection: "row", gap: 4 },
-  barTrack: { flex: 1, height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.35)" },
-  barFill: { height: "100%", backgroundColor: colors.white },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  author: { color: colors.white, fontSize: 15, fontWeight: font.bold },
-  meta: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: font.regular },
-  iconButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  bottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 32,
-    gap: 10,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  placePill: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: "rgba(27,43,40,0.7)",
-  },
-  placeText: { color: colors.white, fontSize: 13, fontWeight: font.bold },
-  caption: { color: colors.white, fontSize: 16, lineHeight: 22, fontWeight: font.regular },
-  viewPost: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 18,
-    backgroundColor: colors.white,
-  },
-  viewPostText: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
-  pressed: { opacity: 0.75 },
-});

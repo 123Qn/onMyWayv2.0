@@ -79,6 +79,37 @@ DA LAM HOM NAY
      test qua API OK. Chua test tren emulator: doi anh dai dien, man Followers, nut xoa bai,
      cuon tai them (emulator bi tat do het gioi han 2 tieng cua tien trinh nen).
 
+=== 2026-11-17 ===
+
+9. Tailwind CSS + component dung chung - CHUA COMMIT
+   - Dung UNIWIND 1.13 (Tailwind v4), KHONG dung NativeWind:
+     NativeWind 4.2.7 da thu va lam vo UI cu tren Expo SDK 58 / RN 0.88 (Pressable style={({pressed})...}
+     va Animated mat style, tab bar bi cat). Docs NativeWind chi ho tro toi SDK 57. Da go bo hoan toan.
+   - Cau hinh: onMyWay/metro.config.js (withUniwindConfig), src/global.css (@theme mau thuong hieu:
+     deep-green, teal-green, lime-green, ink, muted, line, lime-tint, gold, error...; rounded-md 14, rounded-lg 24).
+     src/uniwind-types.d.ts do Metro tu sinh (giu trong repo de tsc hieu className).
+     global.css import o src/app/_layout.tsx. Khong can babel.config.js.
+   - Uniwind chi them className cho component goc cua React Native. Component ben thu ba phai boc
+     withUniwind: da co Screen (SafeAreaView) va Img (expo-image) trong components/ui/Screen.tsx.
+   - Component dung chung: src/components/ui/ (import tu "components/ui")
+       ScreenHeader, BackButton, Screen, Img, SearchField, Chip, SegmentedControl (pill|subtle|underline),
+       Card, SectionTitle, EmptyState, Loading, Stat, StatRow, CountStat, UserRow
+     src/components/profile/ProfileParts.tsx: ProfileHero, LevelPill, TravelStatRow, ShowcaseCard,
+       BadgesCard, PostsGridCard (dung chung cho tab Profile va profile nguoi khac)
+     Helper: lib/cn.ts (noi class), lib/hooks.ts (useRefresh, useFocusLoad), lib/format.ts stopsLabel.
+   - DA CHUYEN TOAN BO sang Tailwind: khong con StyleSheet.create nao trong app.
+     Chi con StyleSheet.absoluteFill cho Svg/WebView (component ben thu ba) va hairlineWidth o tab bar.
+     Animated: dung AnimatedView / AnimatedText / AnimatedScrollView (withUniwind) trong components/ui,
+     gia tri dong (animated, kich thuoc tinh toan, mau theo do hiem) van de trong style={...}.
+   - lib/cn.ts dung tailwind-merge: class sau ghi de class truoc (component co mac dinh van override duoc).
+   - theme.ts chi con colors + avatarPalette (cho icon/SVG/map); font/radius da bo (dung class).
+   - Da xem tren emulator: Home, PostCard, chi tiet bai (thanh tren mo dan khi cuon), ban do trip,
+     moments, tao bai, Community, Profile, profile nguoi khac, Followers, Badges + BadgeSheet, Frames,
+     Notifications, Edit profile, bo loc diem den. Giong truoc. tsc OK.
+     CHUA xem: man dang nhap/dang ky (phai dang xuat), LocationPicker, Celebration (man chuc mung).
+   - Thay doi nho co chu y: chon loai bai o Create va chip danh muc dung SegmentedControl/Chip chung
+     nen bo goc tron hon mot chut, dong bo voi cac man khac.
+
 CACH CHAY LAI MOI TRUONG
 - Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
 - cd Backend && npm run dev                       (API cong 3000)

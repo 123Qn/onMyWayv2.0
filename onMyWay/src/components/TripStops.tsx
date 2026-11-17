@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { Text, View } from "react-native";
 import type { TripStop } from "../lib/feed";
-import { colors, font } from "../lib/theme";
+import { cn } from "../lib/cn";
+import { Img } from "./ui/Screen";
 
 // Vertical timeline: numbered pin, connecting road, then photo + caption for each stop
 export function TripStops({ stops }: { stops: TripStop[] }) {
@@ -10,20 +10,20 @@ export function TripStops({ stops }: { stops: TripStop[] }) {
       {stops.map((stop, i) => {
         const last = i === stops.length - 1;
         return (
-          <View key={stop.id} style={styles.row}>
-            <View style={styles.rail}>
-              <View style={styles.pin}>
-                <Text style={styles.pinText}>{i + 1}</Text>
+          <View key={stop.id} className="flex-row gap-3.5">
+            <View className="w-[30px] items-center">
+              <View className="h-[30px] w-[30px] items-center justify-center rounded-full bg-deep-green">
+                <Text className="text-[13px] font-bold text-white">{i + 1}</Text>
               </View>
-              {!last ? <View style={styles.road} /> : null}
+              {!last ? <View className="my-1 w-[3px] flex-1 rounded-sm bg-lime-green" /> : null}
             </View>
 
-            <View style={[styles.body, !last && styles.bodySpacing]}>
-              <Text style={styles.name}>{stop.name}</Text>
-              {stop.caption ? <Text style={styles.caption}>{stop.caption}</Text> : null}
-              <Image
+            <View className={cn("flex-1 gap-1.5 pt-1", !last && "pb-[22px]")}>
+              <Text className="text-base font-bold text-ink">{stop.name}</Text>
+              {stop.caption ? <Text className="text-sm leading-5 text-muted">{stop.caption}</Text> : null}
+              <Img
                 source={stop.imageUrl}
-                style={styles.image}
+                className="mt-1 aspect-video w-full rounded-2xl bg-lime-tint"
                 contentFit="cover"
                 transition={200}
                 accessibilityLabel={stop.name}
@@ -35,37 +35,3 @@ export function TripStops({ stops }: { stops: TripStop[] }) {
     </View>
   );
 }
-
-const PIN = 30;
-
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 14 },
-  rail: { width: PIN, alignItems: "center" },
-  pin: {
-    width: PIN,
-    height: PIN,
-    borderRadius: PIN / 2,
-    backgroundColor: colors.deepGreen,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pinText: { color: colors.white, fontSize: 13, fontWeight: font.bold },
-  road: {
-    flex: 1,
-    width: 3,
-    marginVertical: 4,
-    borderRadius: 1.5,
-    backgroundColor: colors.limeGreen,
-  },
-  body: { flex: 1, gap: 6, paddingTop: 4 },
-  bodySpacing: { paddingBottom: 22 },
-  name: { color: colors.inkBlack, fontSize: 16, fontWeight: font.bold },
-  caption: { color: colors.textMuted, fontSize: 14, lineHeight: 20, fontWeight: font.regular },
-  image: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    borderRadius: 16,
-    marginTop: 4,
-    backgroundColor: colors.limeTint,
-  },
-});

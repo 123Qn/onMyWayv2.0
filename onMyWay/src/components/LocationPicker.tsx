@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState, type ComponentRef } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { cn } from "../lib/cn";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { t } from "../i18n";
-import { colors, font } from "../lib/theme";
+import { colors } from "../lib/theme";
 import { PrimaryButton } from "./PrimaryButton";
 
 export type Coords = { latitude: number; longitude: number };
@@ -73,7 +74,7 @@ export function LocationPicker({ visible, initial, initialQuery, onConfirm, onCl
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.screen}>
+      <View className="flex-1 bg-lime-tint">
         <WebView
           ref={webview}
           originWhitelist={["*"]}
@@ -89,19 +90,25 @@ export function LocationPicker({ visible, initial, initialQuery, onConfirm, onCl
         />
 
         {/* The pin stays in the middle; its tip marks the chosen spot */}
-        <View pointerEvents="none" style={styles.pinWrap}>
-          <Ionicons name="location" size={44} color={colors.deepGreen} style={styles.pin} />
-          <View style={styles.pinShadow} />
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+          {/* Lifted so the icon's tip (not its middle) sits on the map center */}
+          <Ionicons
+            name="location"
+            size={PIN}
+            color={colors.deepGreen}
+            style={{ marginTop: -PIN, textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 6 }}
+          />
+          <View className="-mt-0.5 h-1 w-2.5 rounded-full bg-black/25" />
         </View>
 
-        <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t("picker.close")} style={styles.round}>
+        <View className="absolute left-4 right-4 top-0 flex-row items-center gap-2.5" style={{ paddingTop: insets.top + 8 }}>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t("picker.close")} className={ROUND}>
             <Ionicons name="close" size={22} color={colors.inkBlack} />
           </Pressable>
-          <View style={styles.searchBox}>
+          <View className="h-11 flex-1 flex-row items-center gap-2 rounded-[22px] bg-white px-3.5 shadow-md">
             <Ionicons name="search" size={18} color={colors.textMuted} />
             <TextInput
-              style={styles.searchInput}
+              className="flex-1 py-0 text-[15px] text-ink"
               value={query}
               onChangeText={setQuery}
               onSubmitEditing={search}
@@ -114,13 +121,13 @@ export function LocationPicker({ visible, initial, initialQuery, onConfirm, onCl
           </View>
         </View>
 
-        <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <Pressable onPress={goToMe} accessibilityRole="button" accessibilityLabel={t("picker.myLocation")} style={[styles.round, styles.meButton]}>
+        <View className="absolute bottom-0 left-4 right-4 gap-3" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+          <Pressable onPress={goToMe} accessibilityRole="button" accessibilityLabel={t("picker.myLocation")} className={cn(ROUND, "self-end")}>
             <Ionicons name="locate" size={22} color={colors.deepGreen} />
           </Pressable>
-          <View style={styles.sheet}>
-            <Text style={styles.hint}>{t("picker.hint")}</Text>
-            <Text style={styles.coords}>
+          <View className="gap-2 rounded-[20px] bg-white p-4 shadow-lg">
+            <Text className="text-[13px] text-muted">{t("picker.hint")}</Text>
+            <Text className="mb-1 text-[15px] font-bold text-ink">
               {center.latitude.toFixed(5)}, {center.longitude.toFixed(5)}
             </Text>
             <PrimaryButton title={t("picker.confirm")} icon="checkmark" onPress={() => onConfirm(center)} />
@@ -161,42 +168,5 @@ function buildHtml(start: Coords, zoom: number) {
 }
 
 const PIN = 44;
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.limeTint },
-  pinWrap: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
-  // Lift the icon so its tip (not its middle) sits on the map center
-  pin: { marginTop: -PIN, textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 6 },
-  pinShadow: { width: 10, height: 4, borderRadius: 5, backgroundColor: "rgba(0,0,0,0.25)", marginTop: -2 },
-  top: { position: "absolute", left: 16, right: 16, top: 0, flexDirection: "row", alignItems: "center", gap: 10 },
-  round: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    shadowColor: colors.inkBlack,
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  searchBox: {
-    flex: 1,
-    height: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    backgroundColor: colors.white,
-    elevation: 3,
-  },
-  searchInput: { flex: 1, color: colors.inkBlack, fontSize: 15, paddingVertical: 0 },
-  bottom: { position: "absolute", left: 16, right: 16, bottom: 0, gap: 12 },
-  meButton: { alignSelf: "flex-end" },
-  sheet: { gap: 8, padding: 16, borderRadius: 20, backgroundColor: colors.white, elevation: 4 },
-  hint: { color: colors.textMuted, fontSize: 13, fontWeight: font.regular },
-  coords: { color: colors.inkBlack, fontSize: 15, fontWeight: font.bold, marginBottom: 4 },
-});
+// Round white floating button over the map
+const ROUND = "h-11 w-11 items-center justify-center rounded-full bg-white shadow-md";

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { rarityColor, type BadgeDef } from "../lib/rewards";
@@ -7,7 +7,8 @@ import { colors } from "../lib/theme";
 const HEX = "50,3 91,26.5 91,73.5 50,97 9,73.5 9,26.5";
 const INNER = "50,15 80.5,32.5 80.5,67.5 50,85 19.5,67.5 19.5,32.5";
 
-// Hexagonal medal tinted by rarity; locked badges are grey with a padlock
+// Hexagonal medal tinted by rarity; locked badges are grey with a padlock.
+// The medal is SVG; sizes scale with `size`, so they stay inline styles.
 export function BadgeIcon({ badge, unlocked, size }: { badge: BadgeDef; unlocked: boolean; size: number }) {
   const tone = rarityColor[badge.rarity];
   const gradientId = `badge-${badge.rarity}`;
@@ -30,15 +31,13 @@ export function BadgeIcon({ badge, unlocked, size }: { badge: BadgeDef; unlocked
         />
         <Polygon points={INNER} fill={colors.white} opacity={unlocked ? 0.92 : 0.7} strokeLinejoin="round" />
       </Svg>
-      <View style={styles.center} pointerEvents="none">
+      <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
         <Ionicons name={badge.icon} size={size * 0.36} color={unlocked ? tone.dark : "#AEBAB7"} />
       </View>
       {!unlocked ? (
         <View
-          style={[
-            styles.lock,
-            { width: size * 0.34, height: size * 0.34, borderRadius: size * 0.17, right: 0, bottom: size * 0.02 },
-          ]}
+          className="absolute right-0 items-center justify-center border-2 border-white bg-muted"
+          style={{ width: size * 0.34, height: size * 0.34, borderRadius: size * 0.17, bottom: size * 0.02 }}
         >
           <Ionicons name="lock-closed" size={size * 0.18} color={colors.white} />
         </View>
@@ -46,15 +45,3 @@ export function BadgeIcon({ badge, unlocked, size }: { badge: BadgeDef; unlocked
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
-  lock: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.textMuted,
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
-});

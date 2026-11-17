@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
+import { cn } from "../lib/cn";
 import { WebView } from "react-native-webview";
 import type { TripStop } from "../lib/feed";
 import { colors } from "../lib/theme";
@@ -9,20 +10,21 @@ type Props = {
   /** false = static preview (no gestures), true = pan/zoom and tappable pins */
   interactive?: boolean;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 };
 
 // Leaflet map in a WebView: numbered pins + the route drawn like the onMyWay logo road
 // (dark line with lime dashes). OpenStreetMap tiles need no API key — fine for development;
 // switch to a hosted tile provider before production (OSM's tile usage policy).
-export function TripMap({ stops, interactive = false, style }: Props) {
+export function TripMap({ stops, interactive = false, style, className }: Props) {
   const html = useMemo(() => buildHtml(stops, interactive), [stops, interactive]);
 
   return (
-    <View style={[styles.container, style]} pointerEvents={interactive ? "auto" : "none"}>
+    <View className={cn("overflow-hidden bg-lime-tint", className)} style={style} pointerEvents={interactive ? "auto" : "none"}>
       <WebView
         originWhitelist={["*"]}
         source={{ html, baseUrl: "https://onmyway.app/" }}
-        style={styles.webview}
+        style={{ flex: 1, backgroundColor: "transparent" }}
         scrollEnabled={false}
         overScrollMode="never"
         setBuiltInZoomControls={false}
@@ -109,8 +111,3 @@ function buildHtml(stops: TripStop[], interactive: boolean) {
 </body>
 </html>`;
 }
-
-const styles = StyleSheet.create({
-  container: { overflow: "hidden", backgroundColor: colors.limeTint },
-  webview: { flex: 1, backgroundColor: "transparent" },
-});

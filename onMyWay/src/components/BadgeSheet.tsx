@@ -1,13 +1,13 @@
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { t } from "../i18n";
 import type { SpecialBadgeId } from "../lib/badges";
 import { compactNumber } from "../lib/format";
 import { rarityColor, useRewards, type BadgeDef, type BadgeProgress } from "../lib/rewards";
-import { colors, font } from "../lib/theme";
+import { colors } from "../lib/theme";
 import { BadgeIcon } from "./BadgeIcon";
 import { PrimaryButton } from "./PrimaryButton";
-import { Ionicons } from "@expo/vector-icons";
 
 export function badgeDescription(badge: BadgeDef) {
   return badge.metric && badge.goal
@@ -30,6 +30,7 @@ export function BadgeSheet({
 
   if (!progress) return null;
   const { badge, unlocked, current, goal } = progress;
+  // Rarity colors are data-driven, so they stay inline styles
   const tone = rarityColor[badge.rarity];
   const isPinned = pinned.includes(badge.id);
 
@@ -39,43 +40,39 @@ export function BadgeSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t("rewards.close")} />
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-        <View style={styles.handle} />
+      <Pressable className="flex-1 bg-ink/45" onPress={onClose} accessibilityLabel={t("rewards.close")} />
+      <View className="items-center gap-2.5 rounded-t-[28px] bg-white px-6 pt-3" style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
+        <View className="mb-2.5 h-1 w-10 rounded-sm bg-line" />
         <BadgeIcon badge={badge} unlocked={unlocked} size={120} />
-        <View style={[styles.rarity, { backgroundColor: unlocked ? tone.light : colors.softGray }]}>
-          <Text style={[styles.rarityText, { color: unlocked ? tone.dark : colors.textMuted }]}>
+        <View className="rounded-xl px-3 py-1" style={{ backgroundColor: unlocked ? tone.light : colors.softGray }}>
+          <Text className="text-xs font-bold" style={{ color: unlocked ? tone.dark : colors.textMuted }}>
             {t(`rewards.rarity.${badge.rarity}`)}
           </Text>
         </View>
-        <Text style={styles.name}>{t(`rewards.badges.${badge.id}`)}</Text>
-        <Text style={styles.desc}>{badgeDescription(badge)}</Text>
+        <Text className="text-center text-[22px] font-bold text-ink">{t(`rewards.badges.${badge.id}`)}</Text>
+        <Text className="text-center text-[15px] text-muted">{badgeDescription(badge)}</Text>
 
-        <View style={styles.progressWrap}>
-          <View style={styles.progressTrack}>
+        <View className="mt-2 gap-1.5 self-stretch">
+          <View className="h-2 overflow-hidden rounded bg-soft-gray">
             <View
-              style={[
-                styles.progressFill,
-                { width: `${(current / goal) * 100}%`, backgroundColor: unlocked ? tone.main : colors.tealGreen },
-              ]}
+              className="h-full rounded"
+              style={{ width: `${(current / goal) * 100}%`, backgroundColor: unlocked ? tone.main : colors.tealGreen }}
             />
           </View>
-          <Text style={styles.progressText}>
-            {unlocked
-              ? t("rewards.unlocked")
-              : t("rewards.progress", { current: compactNumber(current), goal: compactNumber(goal) })}
+          <Text className="text-center text-[13px] font-bold text-muted">
+            {unlocked ? t("rewards.unlocked") : t("rewards.progress", { current: compactNumber(current), goal: compactNumber(goal) })}
           </Text>
         </View>
 
         {!readOnly && !unlocked && badge.category !== "social" && badge.category !== "community" ? (
-          <View style={styles.howTo}>
+          <View className="mt-2 flex-row gap-2 self-stretch rounded-md bg-lime-tint p-3">
             <Ionicons name="shield-checkmark" size={16} color={colors.deepGreen} />
-            <Text style={styles.howToText}>{t("rewards.howToEarn")}</Text>
+            <Text className="flex-1 text-[13px] leading-[18px] text-ink">{t("rewards.howToEarn")}</Text>
           </View>
         ) : null}
 
         {unlocked && !readOnly ? (
-          <View style={styles.button}>
+          <View className="mt-2 self-stretch">
             <PrimaryButton
               title={isPinned ? t("rewards.unpin") : t("rewards.pin")}
               icon="pin"
@@ -88,36 +85,3 @@ export function BadgeSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(27,43,40,0.45)" },
-  sheet: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    backgroundColor: colors.white,
-  },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 10 },
-  rarity: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  rarityText: { fontSize: 12, fontWeight: font.bold },
-  name: { color: colors.inkBlack, fontSize: 22, fontWeight: font.bold, textAlign: "center" },
-  desc: { color: colors.textMuted, fontSize: 15, fontWeight: font.regular, textAlign: "center" },
-  progressWrap: { alignSelf: "stretch", gap: 6, marginTop: 8 },
-  progressTrack: { height: 8, borderRadius: 4, backgroundColor: colors.softGray, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 4 },
-  progressText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold, textAlign: "center" },
-  button: { alignSelf: "stretch", marginTop: 8 },
-  howTo: {
-    alignSelf: "stretch",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: colors.limeTint,
-  },
-  howToText: { flex: 1, color: colors.inkBlack, fontSize: 13, lineHeight: 18, fontWeight: font.regular },
-});

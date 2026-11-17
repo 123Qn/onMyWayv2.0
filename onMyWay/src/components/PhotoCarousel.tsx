@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Animated,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
-import { Image } from "expo-image";
+import { Animated, FlatList, Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { cn } from "../lib/cn";
 import { colors } from "../lib/theme";
+import { AnimatedView, Img } from "./ui/Screen";
 
 export type Slide = { key: string; uri: string; label: string };
 
@@ -62,7 +55,7 @@ export function PhotoCarousel({ slides, onTap, onDoubleTap, renderOverlay }: Pro
 
   return (
     <View>
-      <View style={styles.frame} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View className="aspect-[4/5] overflow-hidden rounded-[18px] bg-lime-tint" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width ? (
           <FlatList
             data={slides}
@@ -74,47 +67,35 @@ export function PhotoCarousel({ slides, onTap, onDoubleTap, renderOverlay }: Pro
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
             renderItem={({ item }) => (
               <Pressable onPress={handlePress} accessibilityLabel={item.label} style={{ width }}>
-                <Image source={item.uri} style={styles.image} contentFit="cover" transition={250} />
+                <Img source={item.uri} className="h-full w-full" contentFit="cover" transition={250} />
               </Pressable>
             )}
           />
         ) : null}
 
-        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <View pointerEvents="box-none" className="absolute inset-0">
           {renderOverlay?.(index)}
         </View>
 
-        <Animated.View
+        <AnimatedView
           pointerEvents="none"
-          style={[
-            styles.burst,
-            {
-              opacity: burst.interpolate({ inputRange: [0, 0.2, 1, 2], outputRange: [0, 1, 1, 0] }),
-              transform: [{ scale: burst.interpolate({ inputRange: [0, 1, 2], outputRange: [0.3, 1, 1.3] }) }],
-            },
-          ]}
+          className="absolute inset-0 items-center justify-center"
+          style={{
+            opacity: burst.interpolate({ inputRange: [0, 0.2, 1, 2], outputRange: [0, 1, 1, 0] }),
+            transform: [{ scale: burst.interpolate({ inputRange: [0, 1, 2], outputRange: [0.3, 1, 1.3] }) }],
+          }}
         >
-          <Ionicons name="heart" size={96} color={colors.white} style={styles.burstIcon} />
-        </Animated.View>
+          <Ionicons name="heart" size={96} color={colors.white} style={{ textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 12 }} />
+        </AnimatedView>
       </View>
 
       {slides.length > 1 ? (
-        <View style={styles.dots}>
+        <View className="mt-2.5 flex-row justify-center gap-[5px]">
           {slides.map((s, i) => (
-            <View key={s.key} style={[styles.dot, i === index && styles.dotActive]} />
+            <View key={s.key} className={cn("h-1.5 rounded-full", i === index ? "w-[18px] bg-lime-green" : "w-1.5 bg-line")} />
           ))}
         </View>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  frame: { aspectRatio: 4 / 5, borderRadius: 18, overflow: "hidden", backgroundColor: colors.limeTint },
-  image: { width: "100%", height: "100%" },
-  burst: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
-  burstIcon: { textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 12 },
-  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 10 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  dotActive: { width: 18, backgroundColor: colors.limeGreen },
-});

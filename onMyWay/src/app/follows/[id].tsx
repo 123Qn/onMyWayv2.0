@@ -1,16 +1,12 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { FlatList, Text } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { fetchFollows, openProfile, type Traveler } from "../../lib/communityApi";
-import { flagEmoji } from "../../lib/format";
-import type { FrameId } from "../../lib/rewards";
-import { colors, font } from "../../lib/theme";
-import { AvatarFrame } from "../../components/AvatarFrame";
+import { useFocusLoad } from "../../lib/hooks";
 import { FollowButton } from "../../components/FollowButton";
+import { Loading, Screen, ScreenHeader, SegmentedControl, UserRow } from "../../components/ui";
 
 type Tab = "followers" | "following";
 
@@ -31,92 +27,48 @@ export default function FollowsScreen() {
     });
     setFailed(followers.status === "rejected" && following.status === "rejected");
   }, [userId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusLoad(load);
 
   const list = lists[tab];
+  const count = (k: Tab) => (lists[k] ? ` · ${lists[k]!.length}` : "");
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("post.back")} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.inkBlack} />
-        </Pressable>
-        <Text style={styles.title} numberOfLines={1}>{name ?? ""}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.tabs}>
-        {(["followers", "following"] as const).map((k) => (
-          <Pressable
-            key={k}
-            onPress={() => setTab(k)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === k }}
-            style={[styles.tab, tab === k && styles.tabActive]}
-          >
-            <Text style={[styles.tabText, tab === k && styles.tabTextActive]}>
-              {t(`profile.${k}`)}
-              {lists[k] ? ` · ${lists[k]!.length}` : ""}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+    <Screen className="flex-1 bg-white">
+      <ScreenHeader title={name} />
+      <SegmentedControl
+        variant="underline"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "followers", label: t("profile.followers") + count("followers") },
+          { value: "following", label: t("profile.following") + count("following") },
+        ]}
+      />
 
       {failed ? (
-        <Text style={styles.empty}>{t("community.loadFailed")}</Text>
+        <Text className="mt-8 text-center text-sm text-muted">{t("community.loadFailed")}</Text>
       ) : !list ? (
-        <ActivityIndicator color={colors.deepGreen} style={styles.loading} />
+        <Loading className="mt-8" />
       ) : (
         <FlatList
           data={list}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>{t(tab === "followers" ? "follows.noFollowers" : "follows.noFollowing")}</Text>}
+          contentContainerClassName="gap-1 p-3"
+          ListEmptyComponent={
+            <Text className="mt-8 text-center text-sm text-muted">
+              {t(tab === "followers" ? "follows.noFollowers" : "follows.noFollowing")}
+            </Text>
+          }
           renderItem={({ item }) => (
-            <Pressable
+            <UserRow
+              user={item}
+              lines={[item.bio]}
               onPress={() => openProfile(item.id, user?.id)}
-              accessibilityRole="button"
-              accessibilityLabel={item.name}
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            >
-              <AvatarFrame name={item.name} frame={item.frame as FrameId} avatarSize={44} uri={item.avatarUrl} />
-              <View style={styles.flex}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.name}
-                  {item.countryCode ? `  ${flagEmoji(item.countryCode)}` : ""}
-                </Text>
-                {item.bio ? <Text style={styles.bio} numberOfLines={1}>{item.bio}</Text> : null}
-              </View>
-              {item.id !== user?.id ? <FollowButton user={item} initial={item.following} compact /> : null}
-            </Pressable>
+              trailing={item.id !== user?.id ? <FollowButton user={item} initial={item.following} compact /> : null}
+            />
           )}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.white },
-  flex: { flex: 1 },
-  pressed: { opacity: 0.8 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
-  headerSpacer: { width: 24 },
-  title: { flex: 1, textAlign: "center", color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
-  tabs: { flexDirection: "row", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  tab: { flex: 1, alignItems: "center", paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: "transparent" },
-  tabActive: { borderBottomColor: colors.deepGreen },
-  tabText: { color: colors.textMuted, fontSize: 15, fontWeight: font.bold },
-  tabTextActive: { color: colors.deepGreen },
-  loading: { marginTop: 32 },
-  list: { padding: 12, gap: 4 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 8 },
-  name: { color: colors.inkBlack, fontSize: 15, fontWeight: font.bold },
-  bio: { color: colors.textMuted, fontSize: 13 },
-  empty: { color: colors.textMuted, fontSize: 14, textAlign: "center", marginTop: 32 },
-});

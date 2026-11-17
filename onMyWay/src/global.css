@@ -1,0 +1,29 @@
+@import "tailwindcss";
+@import "uniwind";
+
+/*
+ * onMyWay brand tokens (Docs/onMyWay-BrandBook.pdf), as Tailwind classes:
+ * bg-deep-green, text-ink, border-line, rounded-md ...
+ * Keep in sync with src/lib/theme.ts, which is still used for raw color values (icons, SVG, maps).
+ */
+@theme {
+  /* Primary */
+  --color-deep-green: #0b7f70;
+  --color-teal-green: #12a58f;
+  --color-lime-green: #8bc34a;
+  /* Secondary */
+  --color-soft-gray: #f7f7f7;
+  --color-sky-blue: #4cb4e6;
+  --color-ink: #1b2b28;
+  /* Derived UI tones */
+  --color-muted: #5f6f6c;
+  --color-line: #e2e8e6;
+  --color-error: #d64545;
+  --color-error-bg: #fdecec;
+  --color-heart: #ef3e5c;
+  --color-lime-tint: #eef6e4;
+  --color-gold: #e0a82e;
+
+  --radius-md: 14px;
+  --radius-lg: 24px;
+}

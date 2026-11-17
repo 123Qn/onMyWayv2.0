@@ -1,19 +1,13 @@
-import { StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
-import { avatarPalette, font } from "../lib/theme";
+import { Text, View } from "react-native";
+import { avatarPalette } from "../lib/theme";
+import { Img } from "./ui/Screen";
 
 // The traveler's photo, or their initial on a brand-colored circle (the color is stable per name)
 export function Avatar({ name, size = 40, uri }: { name: string; size?: number; uri?: string | null }) {
+  // Size and palette are computed per traveler, so they stay inline styles
+  const round = { width: size, height: size, borderRadius: size / 2 };
   if (uri) {
-    return (
-      <Image
-        source={uri}
-        style={{ width: size, height: size, borderRadius: size / 2 }}
-        contentFit="cover"
-        transition={150}
-        accessibilityIgnoresInvertColors
-      />
-    );
+    return <Img source={uri} style={round} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />;
   }
   const trimmed = name.trim();
   let hash = 0;
@@ -21,15 +15,10 @@ export function Avatar({ name, size = 40, uri }: { name: string; size?: number; 
   const { bg, fg } = avatarPalette[Math.abs(hash) % avatarPalette.length];
 
   return (
-    <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      <Text style={[styles.initial, { color: fg, fontSize: size * 0.42 }]}>
+    <View className="items-center justify-center" style={[round, { backgroundColor: bg }]}>
+      <Text className="font-bold" style={{ color: fg, fontSize: size * 0.42 }}>
         {trimmed.charAt(0).toUpperCase()}
       </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  circle: { alignItems: "center", justifyContent: "center" },
-  initial: { fontWeight: font.bold },
-});

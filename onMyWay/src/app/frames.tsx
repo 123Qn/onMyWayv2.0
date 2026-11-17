@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
+import { cn } from "../lib/cn";
 import { FRAMES, getBadge, rarityColor, useRewards, type FrameDef } from "../lib/rewards";
-import { colors, font, radius } from "../lib/theme";
+import { colors } from "../lib/theme";
 import { AvatarFrame, FramePreview } from "../components/AvatarFrame";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { Screen, ScreenHeader } from "../components/ui";
 
 // Pick an avatar frame: big live preview on top, collection below
 export default function FramesScreen() {
@@ -18,40 +19,29 @@ export default function FramesScreen() {
   const [previewId, setPreviewId] = useState(equipped);
   const preview = FRAMES.find((f) => f.id === previewId)!;
   const unlocked = isFrameUnlocked(preview);
+  // Rarity colors are data-driven, so they stay inline styles
   const tone = rarityColor[preview.rarity];
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel={t("post.back")}
-          hitSlop={8}
-          style={styles.back}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.inkBlack} />
-        </Pressable>
-        <Text style={styles.title}>{t("rewards.framesTitle")}</Text>
-        <View style={styles.back} />
-      </View>
+    <Screen className="flex-1 bg-soft-gray" edges={["top"]}>
+      <ScreenHeader title={t("rewards.framesTitle")} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.stage}>
+      <ScrollView contentContainerClassName="gap-4 p-4 pb-6" showsVerticalScrollIndicator={false}>
+        <View className="items-center gap-2 rounded-lg bg-white py-6">
           <AvatarFrame name={user?.name ?? "?"} frame={preview.id} avatarSize={120} uri={user?.avatarUrl} />
-          <Text style={styles.frameName}>{t(`rewards.frames.${preview.id}`)}</Text>
-          <View style={[styles.rarity, { backgroundColor: tone.light }]}>
-            <Text style={[styles.rarityText, { color: tone.dark }]}>{t(`rewards.rarity.${preview.rarity}`)}</Text>
+          <Text className="mt-1 text-xl font-bold text-ink">{t(`rewards.frames.${preview.id}`)}</Text>
+          <View className="rounded-xl px-3 py-1" style={{ backgroundColor: tone.light }}>
+            <Text className="text-xs font-bold" style={{ color: tone.dark }}>{t(`rewards.rarity.${preview.rarity}`)}</Text>
           </View>
           {!unlocked ? (
-            <View style={styles.requirement}>
+            <View className="mt-1 flex-row items-center gap-1.5 px-6">
               <Ionicons name="lock-closed" size={14} color={colors.textMuted} />
-              <Text style={styles.requirementText}>{requirement(preview)}</Text>
+              <Text className="text-center text-sm text-muted">{requirement(preview)}</Text>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.grid}>
+        <View className="flex-row flex-wrap gap-2.5">
           {FRAMES.map((f) => {
             const open = isFrameUnlocked(f);
             const active = f.id === previewId;
@@ -62,30 +52,31 @@ export default function FramesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t(`rewards.frames.${f.id}`)}
                 accessibilityState={{ selected: active }}
-                style={[styles.cell, active && { borderColor: rarityColor[f.rarity].main }]}
+                className="w-[31%] items-center gap-1.5 overflow-hidden rounded-[18px] border-2 border-transparent bg-white pb-2.5 pt-3"
+                style={active ? { borderColor: rarityColor[f.rarity].main } : undefined}
               >
-                <View style={!open && styles.lockedArt}>
+                <View className={cn(!open && "opacity-35")}>
                   <FramePreview frame={f.id} size={72} />
                 </View>
                 {f.id === equipped ? (
-                  <View style={styles.equippedTag}>
+                  <View className="absolute right-2 top-2 h-5 w-5 items-center justify-center rounded-full bg-deep-green">
                     <Ionicons name="checkmark" size={12} color={colors.white} />
                   </View>
                 ) : null}
                 {!open ? (
-                  <View style={styles.lockTag}>
+                  <View className="absolute left-2 top-2 h-5 w-5 items-center justify-center rounded-full bg-muted">
                     <Ionicons name="lock-closed" size={11} color={colors.white} />
                   </View>
                 ) : null}
-                <View style={[styles.rarityBar, { backgroundColor: rarityColor[f.rarity].main }]} />
-                <Text style={styles.cellName} numberOfLines={1}>{t(`rewards.frames.${f.id}`)}</Text>
+                <View className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: rarityColor[f.rarity].main }} />
+                <Text className="px-1.5 text-xs font-bold text-ink" numberOfLines={1}>{t(`rewards.frames.${f.id}`)}</Text>
               </Pressable>
             );
           })}
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View className="bg-soft-gray px-4 pt-3" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
         <PrimaryButton
           title={preview.id === equipped ? t("rewards.equipped") : t("rewards.equip")}
           icon={preview.id === equipped ? "checkmark-circle" : unlocked ? "color-palette" : "lock-closed"}
@@ -93,7 +84,7 @@ export default function FramesScreen() {
           onPress={() => equipFrame(preview.id)}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -102,68 +93,3 @@ function requirement(frame: FrameDef) {
     ? t("rewards.unlockAtLevel", { level: frame.unlock.level })
     : t("rewards.unlockWithBadge", { badge: t(`rewards.badges.${getBadge(frame.unlock.badge).id}`) });
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.softGray },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  back: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  title: { color: colors.inkBlack, fontSize: 18, fontWeight: font.bold },
-  content: { padding: 16, paddingBottom: 24, gap: 16 },
-  stage: {
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 24,
-    borderRadius: radius.lg,
-    backgroundColor: colors.white,
-  },
-  frameName: { color: colors.inkBlack, fontSize: 20, fontWeight: font.bold, marginTop: 4 },
-  rarity: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  rarityText: { fontSize: 12, fontWeight: font.bold },
-  requirement: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, paddingHorizontal: 24 },
-  requirementText: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular, textAlign: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  cell: {
-    width: "31%",
-    alignItems: "center",
-    gap: 6,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "transparent",
-    backgroundColor: colors.white,
-    overflow: "hidden",
-  },
-  lockedArt: { opacity: 0.35 },
-  equippedTag: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.deepGreen,
-  },
-  lockTag: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.textMuted,
-  },
-  rarityBar: { position: "absolute", left: 0, right: 0, bottom: 0, height: 3 },
-  cellName: { color: colors.inkBlack, fontSize: 12, fontWeight: font.bold, paddingHorizontal: 6 },
-  footer: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: colors.softGray },
-});

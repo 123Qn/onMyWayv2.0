@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
+import { cn } from "../lib/cn";
 import { WebView } from "react-native-webview";
 import type { TripStop } from "../lib/feed";
 import { colors } from "../lib/theme";
@@ -13,11 +14,12 @@ type Props = {
   /** Bump to re-fit the map around the route and the user */
   fitKey: number;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 };
 
 // Leaflet map for a running trip: road route, stops (ticked when reached) and the user's dot.
 // The page loads once; changes are pushed in with injectJavaScript so the map never reloads.
-export function LiveTripMap({ stops, visited, route, user, fitKey, style }: Props) {
+export function LiveTripMap({ stops, visited, route, user, fitKey, style, className }: Props) {
   const webview = useRef<ComponentRef<typeof WebView>>(null);
   const [ready, setReady] = useState(false);
   const html = useMemo(() => buildHtml(), []);
@@ -43,12 +45,12 @@ export function LiveTripMap({ stops, visited, route, user, fitKey, style }: Prop
   }, [ready, fitKey]);
 
   return (
-    <View style={[styles.container, style]}>
+    <View className={cn("overflow-hidden bg-lime-tint", className)} style={style}>
       <WebView
         ref={webview}
         originWhitelist={["*"]}
         source={{ html, baseUrl: "https://onmyway.app/" }}
-        style={styles.webview}
+        style={{ flex: 1, backgroundColor: "transparent" }}
         onLoadEnd={() => setReady(true)}
         javaScriptEnabled
         setBuiltInZoomControls={false}
@@ -121,8 +123,3 @@ function buildHtml() {
 </body>
 </html>`;
 }
-
-const styles = StyleSheet.create({
-  container: { overflow: "hidden", backgroundColor: colors.limeTint },
-  webview: { flex: 1, backgroundColor: "transparent" },
-});

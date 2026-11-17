@@ -1,13 +1,14 @@
 import { memo } from "react";
-import { Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Pressable, Share, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
 import { useAuth } from "../lib/AuthContext";
-import { compactNumber as compact, flagEmoji, timeAgo } from "../lib/format";
+import { compactNumber as compact, flagEmoji, timeAgo, stopsLabel } from "../lib/format";
 import { isByUser, postKind, type FeedPost } from "../lib/feed";
 import { useFollowing, usePostState } from "../lib/postStore";
-import { colors, font, radius } from "../lib/theme";
+import { cn } from "../lib/cn";
+import { colors } from "../lib/theme";
 import { useAuthorFrame } from "../lib/rewards";
 import { openProfile } from "../lib/communityApi";
 import { AvatarFrame } from "./AvatarFrame";
@@ -32,8 +33,8 @@ function PostCardImpl({ post }: { post: FeedPost }) {
   const subtitle = t(`feed.kind.${kind}`);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
+    <View className="mx-4 rounded-lg bg-white py-3.5 shadow-[0_4px_12px_rgba(27,43,40,0.06)]">
+      <View className="flex-row items-center gap-2 pl-1.5 pr-3.5">
         <Pressable
           onPress={() => openProfile(post.author.id, user?.id)}
           accessibilityRole="button"
@@ -42,21 +43,21 @@ function PostCardImpl({ post }: { post: FeedPost }) {
         >
           <AvatarFrame name={post.author.name} frame={frame} avatarSize={40} uri={post.author.avatarUrl} />
         </Pressable>
-        <View style={styles.headerText}>
-          <Text style={styles.authorLine} numberOfLines={1}>
-            <Text style={styles.author} onPress={() => openProfile(post.author.id, user?.id)}>
+        <View className="flex-1 gap-0.5">
+          <Text className="text-[15px] text-ink" numberOfLines={1}>
+            <Text className="font-bold" onPress={() => openProfile(post.author.id, user?.id)}>
               {post.author.name}
             </Text>
-            <Text style={styles.subtitle}> {subtitle}</Text>
+            <Text className="text-sm text-muted"> {subtitle}</Text>
           </Text>
-          <View style={styles.metaRow}>
+          <View className="flex-row items-center gap-1">
             <Ionicons
               name={post.verified ? "shield-checkmark" : "location"}
               size={13}
               color={post.verified ? colors.deepGreen : colors.tealGreen}
               accessibilityLabel={post.verified ? t("create.verifiedHere") : undefined}
             />
-            <Text style={styles.meta} numberOfLines={1}>
+            <Text className="shrink text-[13px] text-muted" numberOfLines={1}>
               {post.place.name} · {timeAgo(post.createdAt)}
             </Text>
           </View>
@@ -67,9 +68,9 @@ function PostCardImpl({ post }: { post: FeedPost }) {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityState={{ selected: isFollowing }}
-          style={[styles.follow, isFollowing && styles.followActive]}
+          className={cn("rounded-[14px] px-3 py-1.5", isFollowing ? "bg-soft-gray" : "bg-lime-tint")}
         >
-          <Text style={[styles.followText, isFollowing && styles.followTextActive]}>
+          <Text className={cn("text-[13px] font-bold", isFollowing ? "text-muted" : "text-deep-green")}>
             {isFollowing ? t("post.following") : t("post.follow")}
           </Text>
         </Pressable>
@@ -80,7 +81,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
         <QuestionBody post={post} commentCount={commentCount} onOpen={openPost} />
       ) : (
         <>
-          <View style={styles.media}>
+          <View className="mx-3 mt-3">
             <PhotoCarousel
               slides={slidesFor(post)}
               onTap={openPost}
@@ -91,23 +92,23 @@ function PostCardImpl({ post }: { post: FeedPost }) {
             />
           </View>
           <Pressable onPress={openPost} accessibilityRole="button" accessibilityLabel={t("feed.openPost")}>
-            {post.title ? <Text style={styles.postTitle} numberOfLines={2}>{post.title}</Text> : null}
-            {post.caption ? <Text style={styles.caption} numberOfLines={3}>{post.caption}</Text> : null}
+            {post.title ? <Text className="mt-2.5 px-4 text-[17px] font-bold leading-[23px] text-ink" numberOfLines={2}>{post.title}</Text> : null}
+            {post.caption ? <Text className="mt-2.5 px-4 text-[15px] leading-[21px] text-ink" numberOfLines={3}>{post.caption}</Text> : null}
           </Pressable>
         </>
       )}
 
-      <View style={styles.actions}>
+      <View className="mt-3 flex-row items-center gap-5 px-4">
         <Pressable
           onPress={toggleLike}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={liked ? t("feed.unlike") : t("feed.like")}
           accessibilityState={{ selected: liked }}
-          style={styles.action}
+          className="flex-row items-center gap-1.5"
         >
           <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={liked ? colors.heart : colors.inkBlack} />
-          <Text style={styles.count}>{compact(likes)}</Text>
+          <Text className="text-sm text-ink">{compact(likes)}</Text>
         </Pressable>
 
         <Pressable
@@ -115,10 +116,10 @@ function PostCardImpl({ post }: { post: FeedPost }) {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={`${t("feed.comments")}: ${commentCount}`}
-          style={styles.action}
+          className="flex-row items-center gap-1.5"
         >
           <Ionicons name="chatbubble-outline" size={22} color={colors.inkBlack} />
-          <Text style={styles.count}>{compact(commentCount)}</Text>
+          <Text className="text-sm text-ink">{compact(commentCount)}</Text>
         </Pressable>
 
         <Pressable
@@ -126,12 +127,12 @@ function PostCardImpl({ post }: { post: FeedPost }) {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={t("feed.share")}
-          style={styles.action}
+          className="flex-row items-center gap-1.5"
         >
           <Ionicons name="paper-plane-outline" size={22} color={colors.inkBlack} />
         </Pressable>
 
-        <View style={styles.spacer} />
+        <View className="flex-1" />
 
         {kind !== "question" ? (
           <Pressable
@@ -139,10 +140,10 @@ function PostCardImpl({ post }: { post: FeedPost }) {
             hitSlop={6}
             accessibilityRole="button"
             accessibilityState={{ selected: saved }}
-            style={({ pressed }) => [styles.want, saved && styles.wantActive, pressed && styles.pressed]}
+            className={cn("flex-row items-center gap-1.5 rounded-2xl border-[1.5px] px-3 py-[7px] active:opacity-75", saved ? "border-deep-green bg-deep-green" : "border-lime-green")}
           >
             <Ionicons name={saved ? "flag" : "flag-outline"} size={16} color={saved ? colors.white : colors.deepGreen} />
-            <Text style={[styles.wantText, saved && styles.wantTextActive]}>
+            <Text className={cn("text-[13px] font-bold", saved ? "text-white" : "text-deep-green")}>
               {saved ? t("feed.onMyList") : t("feed.wantToGo")}
             </Text>
           </Pressable>
@@ -150,7 +151,7 @@ function PostCardImpl({ post }: { post: FeedPost }) {
       </View>
 
       {post.likedBy ? (
-        <View style={styles.likedBy}>
+        <View className="mt-3 px-4">
           <FaceStack
             names={[post.likedBy]}
             bold={post.likedBy}
@@ -177,6 +178,10 @@ function slidesFor(post: FeedPost): Slide[] {
   return [cover, ...stops.map((s) => ({ key: s.id, uri: s.imageUrl, label: s.name }))];
 }
 
+// White label pinned over the photo (category, stop, trip length)
+const BADGE = "absolute max-w-[75%] flex-row items-center gap-[5px] rounded-xl px-2.5 py-[5px]";
+const BADGE_TEXT = "shrink text-xs font-bold text-ink";
+
 function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
   const isTrip = postKind(post) === "trip";
   const extraStops = post.stops.filter((s) => s.imageUrl !== post.imageUrl);
@@ -185,29 +190,29 @@ function MediaBadges({ post, index }: { post: FeedPost; index: number }) {
 
   return (
     <>
-      <View style={[styles.badge, styles.badgeTopLeft]}>
-        <Text style={styles.badgeText}>{t(`feed.categories.${post.category}`)}</Text>
+      <View className={cn(BADGE, "left-3 top-3 bg-white/90")}>
+        <Text className={BADGE_TEXT}>{t(`feed.categories.${post.category}`)}</Text>
       </View>
       {total > 1 ? (
-        <View style={[styles.badge, styles.badgeDark, styles.badgeTopRight]}>
-          <Text style={styles.badgeTextLight}>
+        <View className={cn(BADGE, "right-3 top-3 bg-ink/60")}>
+          <Text className="text-xs font-bold text-white">
             {index + 1}/{total}
           </Text>
         </View>
       ) : null}
       {stop ? (
-        <View style={[styles.badge, styles.badgeBottom]}>
-          <View style={styles.stopNumber}>
-            <Text style={styles.stopNumberText}>{post.stops.indexOf(stop) + 1}</Text>
+        <View className={cn(BADGE, "bottom-3 left-3 bg-white/90")}>
+          <View className="h-[18px] w-[18px] items-center justify-center rounded-full bg-deep-green">
+            <Text className="text-[11px] font-bold text-white">{post.stops.indexOf(stop) + 1}</Text>
           </View>
-          <Text style={styles.badgeText} numberOfLines={1}>{stop.name}</Text>
+          <Text className={BADGE_TEXT} numberOfLines={1}>{stop.name}</Text>
         </View>
       ) : isTrip ? (
-        <View style={[styles.badge, styles.badgeBottom]}>
+        <View className={cn(BADGE, "bottom-3 left-3 bg-white/90")}>
           <Ionicons name="map" size={13} color={colors.deepGreen} />
-          <Text style={styles.badgeText}>
+          <Text className={BADGE_TEXT}>
             {post.tripDays ? `${t("feed.tripDays", { count: post.tripDays })} · ` : ""}
-            {post.stops.length === 1 ? t("feed.stopsShortOne") : t("feed.stopsShort", { count: post.stops.length })}
+            {stopsLabel(post.stops.length, true)}
           </Text>
         </View>
       ) : null}
@@ -223,135 +228,23 @@ function QuestionBody({ post, commentCount, onOpen }: { post: FeedPost; commentC
       onPress={onOpen}
       accessibilityRole="button"
       accessibilityLabel={t("feed.openPost")}
-      style={({ pressed }) => [styles.question, pressed && styles.pressed]}
+      className="mx-3 mt-3 gap-3 rounded-[18px] bg-lime-tint p-4.5 active:opacity-75"
     >
       <Ionicons name="chatbubbles" size={26} color={colors.limeGreen} />
-      <Text style={styles.questionText}>{post.caption}</Text>
-      <View style={styles.questionPlace}>
-        <Text style={styles.questionPlaceText}>
+      <Text className="text-[19px] font-bold leading-[26px] text-ink">{post.caption}</Text>
+      <View className="self-start rounded-xl bg-white px-2.5 py-[5px]">
+        <Text className="text-xs font-bold text-deep-green">
           {flagEmoji(post.place.countryCode)} {post.place.name}, {post.place.country}
         </Text>
       </View>
-      <View style={styles.questionFooter}>
-        <View style={styles.questionAnswers}>
+      <View className="mt-1 flex-row items-center gap-3">
+        <View className="flex-1">
           <FaceStack names={answerers} text={t("feed.answers", { count: commentCount })} />
         </View>
-        <View style={styles.answerButton}>
-          <Text style={styles.answerText}>{t("feed.answer")}</Text>
+        <View className="rounded-2xl bg-deep-green px-4 py-2">
+          <Text className="text-[13px] font-bold text-white">{t("feed.answer")}</Text>
         </View>
       </View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    paddingVertical: 14,
-    marginHorizontal: 16,
-    shadowColor: colors.inkBlack,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 6, paddingRight: 14 },
-  headerText: { flex: 1, gap: 2 },
-  authorLine: { color: colors.inkBlack, fontSize: 15 },
-  author: { fontWeight: font.bold },
-  subtitle: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  meta: { flexShrink: 1, color: colors.textMuted, fontSize: 13, fontWeight: font.regular },
-  follow: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: colors.limeTint,
-  },
-  followActive: { backgroundColor: colors.softGray },
-  followText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
-  followTextActive: { color: colors.textMuted },
-  media: { marginTop: 12, marginHorizontal: 12 },
-  badge: {
-    position: "absolute",
-    left: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    maxWidth: "75%",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.92)",
-  },
-  badgeTopLeft: { top: 12 },
-  badgeTopRight: { top: 12, left: undefined, right: 12 },
-  badgeBottom: { bottom: 12 },
-  badgeDark: { backgroundColor: "rgba(27,43,40,0.6)" },
-  badgeText: { flexShrink: 1, color: colors.inkBlack, fontSize: 12, fontWeight: font.bold },
-  badgeTextLight: { color: colors.white, fontSize: 12, fontWeight: font.bold },
-  stopNumber: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.deepGreen,
-  },
-  stopNumberText: { color: colors.white, fontSize: 11, fontWeight: font.bold },
-  postTitle: { marginTop: 10, paddingHorizontal: 16, color: colors.inkBlack, fontSize: 17, lineHeight: 23, fontWeight: font.bold },
-  caption: {
-    marginTop: 10,
-    paddingHorizontal: 16,
-    color: colors.inkBlack,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: font.regular,
-  },
-  question: {
-    marginTop: 12,
-    marginHorizontal: 12,
-    padding: 18,
-    gap: 12,
-    borderRadius: 18,
-    backgroundColor: colors.limeTint,
-  },
-  questionText: { color: colors.inkBlack, fontSize: 19, lineHeight: 26, fontWeight: font.bold },
-  questionPlace: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-  },
-  questionPlaceText: { color: colors.deepGreen, fontSize: 12, fontWeight: font.bold },
-  questionFooter: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
-  questionAnswers: { flex: 1 },
-  answerButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: colors.deepGreen,
-  },
-  answerText: { color: colors.white, fontSize: 13, fontWeight: font.bold },
-  actions: { flexDirection: "row", alignItems: "center", gap: 20, marginTop: 12, paddingHorizontal: 16 },
-  action: { flexDirection: "row", alignItems: "center", gap: 6 },
-  count: { color: colors.inkBlack, fontSize: 14, fontWeight: font.regular },
-  spacer: { flex: 1 },
-  want: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: colors.limeGreen,
-  },
-  wantActive: { backgroundColor: colors.deepGreen, borderColor: colors.deepGreen },
-  wantText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
-  wantTextActive: { color: colors.white },
-  pressed: { opacity: 0.75 },
-  likedBy: { marginTop: 12, paddingHorizontal: 16 },
-});

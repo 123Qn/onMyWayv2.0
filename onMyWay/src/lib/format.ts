@@ -14,6 +14,16 @@ export function timeAgo(iso: string) {
 export const compactNumber = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(n);
 
+/** "1 stop" / "4 stops" (short: the compact form used on feed cards) */
+export const stopsLabel = (count: number, short = false) =>
+  short
+    ? count === 1
+      ? t("feed.stopsShortOne")
+      : t("feed.stopsShort", { count })
+    : count === 1
+      ? t("post.stopsCountOne")
+      : t("post.stopsCount", { count });
+
 // "VN" -> 🇻🇳 (regional indicator symbols)
 export const flagEmoji = (code: string) =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));

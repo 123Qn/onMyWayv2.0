@@ -18,15 +18,12 @@ export function AvatarFrame({ name, frame, avatarSize, uri }: Props) {
       <Svg width={size} height={size} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
         {FRAME_ART[frame]()}
       </Svg>
-      <View style={styles.center} pointerEvents="none">
+      <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
         <Avatar name={name} size={avatarSize} uri={uri} />
       </View>
       {frame === "jet" ? (
         // The plane flies on top of the orbit line
-        <View
-          pointerEvents="none"
-          style={[styles.plane, { left: size * 0.83, top: size * 0.17, transform: [{ rotate: "-60deg" }] }]}
-        >
+        <View pointerEvents="none" className="absolute" style={{ left: size * 0.83, top: size * 0.17, transform: [{ rotate: "-60deg" }] }}>
           <Ionicons name="airplane" size={size * 0.15} color={colors.skyBlue} />
         </View>
       ) : null}
@@ -43,7 +40,7 @@ export function FramePreview({ frame, size }: { frame: FrameId; size: number }) 
         {FRAME_ART[frame]()}
       </Svg>
       {frame === "jet" ? (
-        <View style={[styles.plane, { left: size * 0.83, top: size * 0.17, transform: [{ rotate: "-60deg" }] }]}>
+        <View className="absolute" style={{ left: size * 0.83, top: size * 0.17, transform: [{ rotate: "-60deg" }] }}>
           <Ionicons name="airplane" size={size * 0.15} color={colors.skyBlue} />
         </View>
       ) : null}
@@ -273,8 +270,3 @@ const FRAME_ART: Record<FrameId, () => ReactNode> = {
     </>
   ),
 };
-
-const styles = StyleSheet.create({
-  center: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
-  plane: { position: "absolute" },
-});

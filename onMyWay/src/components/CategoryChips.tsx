@@ -1,7 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, ScrollView, Text } from "react-native";
 import { t } from "../i18n";
+import { cn } from "../lib/cn";
 import type { PlaceCategory } from "../lib/feed";
-import { colors, font } from "../lib/theme";
 
 export type CategoryFilter = PlaceCategory | "all";
 
@@ -11,11 +11,7 @@ type Props = { value: CategoryFilter; onChange: (value: CategoryFilter) => void 
 
 export function CategoryChips({ value, onChange }: Props) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-5">
       {CATEGORIES.map((category) => {
         const selected = category === value;
         return (
@@ -24,35 +20,15 @@ export function CategoryChips({ value, onChange }: Props) {
             onPress={() => onChange(category)}
             accessibilityRole="button"
             accessibilityState={{ selected }}
-            style={({ pressed }) => [
-              styles.chip,
-              selected && styles.chipSelected,
-              pressed && !selected && styles.chipPressed,
-            ]}
+            className={cn(
+              "h-[38px] justify-center rounded-[19px] border px-4",
+              selected ? "border-deep-green bg-deep-green" : "border-line bg-white active:bg-lime-tint"
+            )}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]}>
-              {t(`feed.categories.${category}`)}
-            </Text>
+            <Text className={cn("text-sm", selected ? "font-bold text-white" : "text-ink")}>{t(`feed.categories.${category}`)}</Text>
           </Pressable>
         );
       })}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { paddingHorizontal: 20, gap: 8 },
-  chip: {
-    height: 38,
-    paddingHorizontal: 16,
-    borderRadius: 19,
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipSelected: { backgroundColor: colors.deepGreen, borderColor: colors.deepGreen },
-  chipPressed: { backgroundColor: colors.limeTint },
-  label: { color: colors.inkBlack, fontSize: 14, fontWeight: font.regular },
-  labelSelected: { color: colors.white, fontWeight: font.bold },
-});

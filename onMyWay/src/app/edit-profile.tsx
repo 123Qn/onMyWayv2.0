@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -10,10 +9,12 @@ import { flagEmoji } from "../lib/format";
 import { uploadPhoto } from "../lib/postsApi";
 import { updateMyProfile, type ProfilePatch } from "../lib/profileApi";
 import { useRewards } from "../lib/rewards";
-import { colors, font, radius } from "../lib/theme";
+import { cn } from "../lib/cn";
+import { colors } from "../lib/theme";
 import { AvatarFrame } from "../components/AvatarFrame";
 import { CountryPicker } from "../components/CountryPicker";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { Screen, ScreenHeader } from "../components/ui";
 
 const MAX_BIO = 300;
 
@@ -75,57 +76,45 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.cancel")} hitSlop={8}>
-          <Ionicons name="close" size={24} color={colors.inkBlack} />
-        </Pressable>
-        <Text style={styles.title}>{t("editProfile.title")}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <Screen className="flex-1 bg-white">
+      <ScreenHeader title={t("editProfile.title")} icon="close" />
 
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Pressable onPress={changePhoto} accessibilityRole="button" accessibilityLabel={t("editProfile.photo")} style={styles.avatar}>
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
+        <ScrollView contentContainerClassName="gap-4.5 p-5" keyboardShouldPersistTaps="handled">
+          <Pressable onPress={changePhoto} accessibilityRole="button" accessibilityLabel={t("editProfile.photo")} className="items-center gap-2">
             <AvatarFrame name={name || user.name} frame={frame} avatarSize={96} uri={avatarUri} />
-            <Text style={styles.changePhoto}>{hasPhoto ? t("editProfile.changePhoto") : t("editProfile.addPhoto")}</Text>
+            <Text className="text-[15px] font-bold text-deep-green">{hasPhoto ? t("editProfile.changePhoto") : t("editProfile.addPhoto")}</Text>
           </Pressable>
 
           <Field label={t("editProfile.name")}>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              maxLength={100}
-              style={styles.input}
-              selectionColor={colors.tealGreen}
-              cursorColor={colors.deepGreen}
-            />
+            <Input value={name} onChangeText={setName} maxLength={100} />
           </Field>
 
           <Field label={t("editProfile.bio")} hint={`${bio.length}/${MAX_BIO}`}>
-            <TextInput
+            <Input
               value={bio}
               onChangeText={setBio}
               maxLength={MAX_BIO}
               multiline
               placeholder={t("editProfile.bioPlaceholder")}
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, styles.bio]}
-              selectionColor={colors.tealGreen}
-              cursorColor={colors.deepGreen}
+              className="min-h-24 align-top"
             />
           </Field>
 
           <Field label={t("editProfile.country")}>
-            <Pressable onPress={() => setPickerOpen(true)} accessibilityRole="button" style={[styles.input, styles.select]}>
-              <Text style={country ? styles.selectText : styles.placeholder}>
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              accessibilityRole="button"
+              className="flex-row items-center justify-between rounded-md border border-line px-3.5 py-3"
+            >
+              <Text className={cn("text-base", country ? "text-ink" : "text-muted")}>
                 {country ? `${flagEmoji(country.code)}  ${country.name}` : t("editProfile.chooseCountry")}
               </Text>
               <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
             </Pressable>
           </Field>
 
-          <View style={styles.save}>
+          <View className="mt-2">
             <PrimaryButton title={t("editProfile.save")} icon="checkmark" onPress={save} loading={saving} />
           </View>
         </ScrollView>
@@ -140,47 +129,31 @@ export default function EditProfileScreen() {
         }}
         onClose={() => setPickerOpen(false)}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <View style={styles.field}>
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>{label}</Text>
-        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+    <View className="gap-1.5">
+      <View className="flex-row justify-between">
+        <Text className="text-sm font-bold text-ink">{label}</Text>
+        {hint ? <Text className="text-xs text-muted">{hint}</Text> : null}
       </View>
       {children}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.white },
-  flex: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
-  headerSpacer: { width: 24 },
-  title: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
-  content: { padding: 20, gap: 18 },
-  avatar: { alignItems: "center", gap: 8 },
-  changePhoto: { color: colors.deepGreen, fontSize: 15, fontWeight: font.bold },
-  field: { gap: 6 },
-  labelRow: { flexDirection: "row", justifyContent: "space-between" },
-  label: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
-  hint: { color: colors.textMuted, fontSize: 12 },
-  input: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.inkBlack,
-    fontSize: 16,
-  },
-  bio: { minHeight: 96, textAlignVertical: "top" },
-  select: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectText: { color: colors.inkBlack, fontSize: 16 },
-  placeholder: { color: colors.textMuted, fontSize: 16 },
-  save: { marginTop: 8 },
-});
+/** Bordered text box in the brand colors */
+function Input({ className, ...props }: TextInputProps & { className?: string }) {
+  return (
+    <TextInput
+      placeholderTextColor={colors.textMuted}
+      selectionColor={colors.tealGreen}
+      cursorColor={colors.deepGreen}
+      className={cn("rounded-md border border-line px-3.5 py-3 text-base text-ink", className)}
+      {...props}
+    />
+  );
+}

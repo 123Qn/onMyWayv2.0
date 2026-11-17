@@ -7,25 +7,24 @@ import {
   Modal,
   Pressable,
   Share,
-  StyleSheet,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
-import { compactNumber, flagEmoji, timeAgo } from "../../lib/format";
+import { compactNumber, flagEmoji, timeAgo, stopsLabel } from "../../lib/format";
 import { getPostById, isByUser, postKind, type FeedComment } from "../../lib/feed";
 import { deletePost, fetchComments } from "../../lib/postsApi";
 import { useFollowing, usePostState } from "../../lib/postStore";
 import { useTripRecorder } from "../../lib/tripRecorder";
 import { usePost } from "../../lib/usePost";
-import { colors, font, radius } from "../../lib/theme";
+import { cn } from "../../lib/cn";
+import { colors } from "../../lib/theme";
 import { Avatar } from "../../components/Avatar";
 import { FaceStack } from "../../components/FaceStack";
 import { AvatarFrame } from "../../components/AvatarFrame";
@@ -34,6 +33,7 @@ import { openProfile } from "../../lib/communityApi";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
+import { AnimatedScrollView, AnimatedText, AnimatedView, Img } from "../../components/ui";
 
 export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,7 +44,7 @@ export default function PostScreen() {
 
 function Loading() {
   return (
-    <View style={styles.notFound}>
+    <View className="flex-1 items-center justify-center bg-white">
       <ActivityIndicator color={colors.deepGreen} />
     </View>
   );
@@ -168,119 +168,116 @@ function PostDetail({ postId }: { postId: number }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding">
-      <Animated.ScrollView
+    <KeyboardAvoidingView className="flex-1 bg-white" behavior="padding">
+      <AnimatedScrollView
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: true,
         })}
         scrollEventThrottle={16}
-        style={styles.screen}
-        contentContainerStyle={styles.scrollContent}
+        className="flex-1 bg-white"
+        contentContainerStyle={{ paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Image
+        <Img
           source={post.imageUrl || null}
-          style={[styles.hero, { height: heroHeight }]}
+          className="w-full bg-lime-tint"
+          style={{ height: heroHeight }}
           contentFit="cover"
           transition={250}
           accessibilityLabel={post.place.name}
         />
 
-        <View style={styles.sheet}>
-          <Text style={styles.placeName}>{post.title ?? post.place.name}</Text>
-          <Text style={styles.country}>
+        <View className="-mt-7 rounded-t-[28px] bg-white px-5 pt-6">
+          <Text className="text-[26px] font-bold text-ink">{post.title ?? post.place.name}</Text>
+          <Text className="mt-1 text-[15px] text-muted">
             {flagEmoji(post.place.countryCode)} {post.title ? [post.place.name, post.place.country].filter(Boolean).join(", ") : post.place.country}
           </Text>
 
-          <View style={styles.chips}>
-            {post.verified ? <Chip icon="shield-checkmark" label={t("create.verifiedHere")} /> : null}
-            <Chip icon="pricetag" label={t(`feed.categories.${post.category}`)} />
-            {post.tripDays ? <Chip icon="map" label={t("feed.tripDays", { count: post.tripDays })} /> : null}
+          <View className="mt-3.5 flex-row flex-wrap gap-2">
+            {post.verified ? <InfoChip icon="shield-checkmark" label={t("create.verifiedHere")} /> : null}
+            <InfoChip icon="pricetag" label={t(`feed.categories.${post.category}`)} />
+            {post.tripDays ? <InfoChip icon="map" label={t("feed.tripDays", { count: post.tripDays })} /> : null}
           </View>
 
-          <View style={styles.authorRow}>
+          <View className="-ml-3 mt-3.5 flex-row items-center gap-2">
             <Pressable
               onPress={() => openProfile(post.author.id, user?.id)}
               accessibilityRole="button"
               accessibilityLabel={post.author.name}
-              style={styles.authorLink}
+              className="flex-1 flex-row items-center gap-2"
             >
               <AvatarFrame name={post.author.name} frame={frame} avatarSize={44} uri={post.author.avatarUrl} />
-              <View style={styles.authorText}>
-                <Text style={styles.authorName}>{post.author.name}</Text>
-                <Text style={styles.muted} numberOfLines={1}>
+              <View className="flex-1 gap-0.5">
+                <Text className="text-base font-bold text-ink">{post.author.name}</Text>
+                <Text className="text-sm text-muted" numberOfLines={1}>
                   {timeAgo(post.createdAt)}
                 </Text>
               </View>
             </Pressable>
             {!isMine ? (
-            <Pressable
-              onPress={toggleFollow}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isFollowing }}
-              style={({ pressed }) => [styles.follow, isFollowing && styles.followActive, pressed && styles.sendPressed]}
-            >
-              {isFollowing ? <Ionicons name="checkmark" size={16} color={colors.deepGreen} /> : null}
-              <Text style={[styles.followText, isFollowing && styles.followTextActive]}>
-                {isFollowing ? t("post.following") : t("post.follow")}
-              </Text>
-            </Pressable>
+              <Pressable
+                onPress={toggleFollow}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isFollowing }}
+                className={cn("flex-row items-center gap-1 rounded-[18px] px-4 py-2 active:bg-teal-green", isFollowing ? "bg-lime-tint" : "bg-deep-green")}
+              >
+                {isFollowing ? <Ionicons name="checkmark" size={16} color={colors.deepGreen} /> : null}
+                <Text className={cn("text-sm font-bold", isFollowing ? "text-deep-green" : "text-white")}>
+                  {isFollowing ? t("post.following") : t("post.follow")}
+                </Text>
+              </Pressable>
             ) : null}
           </View>
 
-          {post.caption ? <Text style={styles.caption}>{post.caption}</Text> : null}
+          {post.caption ? <Text className="mt-3.5 text-base leading-6 text-ink">{post.caption}</Text> : null}
 
-          <View style={styles.statsRow}>
+          <View className="mt-4.5 flex-row gap-6">
             <Pressable
               onPress={toggleLike}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={liked ? t("feed.unlike") : t("feed.like")}
               accessibilityState={{ selected: liked }}
-              style={styles.stat}
+              className="flex-row items-center gap-1.5"
             >
               <Ionicons name={liked ? "heart" : "heart-outline"} size={26} color={liked ? colors.heart : colors.inkBlack} />
-              <Text style={styles.statText}>{compactNumber(likes)}</Text>
+              <Text className="text-[15px] text-ink">{compactNumber(likes)}</Text>
             </Pressable>
-            <View style={styles.stat}>
+            <View className="flex-row items-center gap-1.5">
               <Ionicons name="chatbubble-outline" size={23} color={colors.inkBlack} />
-              <Text style={styles.statText}>{compactNumber(commentCount)}</Text>
+              <Text className="text-[15px] text-ink">{compactNumber(commentCount)}</Text>
             </View>
           </View>
 
           {hasMap ? (
             <>
-              <View style={styles.divider} />
+              <Divider />
 
-              <View style={styles.sectionHeader}>
-                {kind === "trip" ? (
-                  <Text style={styles.sectionTitle}>
-                    {t("post.tripRoute")}{" "}
-                    <Text style={styles.sectionCount}>· {stopsLabel(post.stops.length)}</Text>
-                  </Text>
-                ) : (
-                  <Text style={styles.sectionTitle}>{t("post.location")}</Text>
-                )}
+              <View className="mb-3">
+                <Text className={SECTION_TITLE}>
+                  {kind === "trip" ? t("post.tripRoute") : t("post.location")}
+                  {kind === "trip" ? <Text className="font-normal text-muted"> · {stopsLabel(post.stops.length)}</Text> : null}
+                </Text>
               </View>
 
               <Pressable
                 onPress={() => setMapOpen(true)}
                 accessibilityRole="button"
                 accessibilityLabel={t("post.openMap")}
-                style={styles.mapPreview}
+                className="h-[220px] overflow-hidden rounded-[20px] bg-lime-tint"
               >
-                <TripMap stops={post.stops} style={StyleSheet.absoluteFill} />
-                <View style={styles.expandBadge}>
+                <TripMap stops={post.stops} className="absolute inset-0" />
+                <View className="absolute bottom-3 right-3 flex-row items-center gap-1.5 rounded-2xl bg-white/95 px-3 py-[7px]">
                   <Ionicons name="expand" size={16} color={colors.deepGreen} />
-                  <Text style={styles.expandText}>{t("post.openMap")}</Text>
+                  <Text className="text-[13px] font-bold text-deep-green">{t("post.openMap")}</Text>
                 </View>
               </Pressable>
 
-              <View style={styles.goButton}>
+              <View className="mb-6 mt-3.5">
                 <PrimaryButton title={goLabel} icon="navigate" onPress={go} />
                 {post.tookTrip || wantToGo ? (
-                  <View style={styles.tookTrip}>
+                  <View className="mt-3 items-center">
                     <FaceStack
                       names={post.commenters ?? []}
                       text={[
@@ -298,15 +295,15 @@ function PostDetail({ postId }: { postId: number }) {
             </>
           ) : null}
 
-          <View style={styles.divider} />
+          <Divider />
 
-          <Text style={styles.sectionTitle}>
-            {kind === "question" ? t("post.answers") : t("post.comments")}{" "}
-            <Text style={styles.sectionCount}>· {compactNumber(commentCount)}</Text>
+          <Text className={SECTION_TITLE}>
+            {kind === "question" ? t("post.answers") : t("post.comments")}
+            <Text className="font-normal text-muted"> · {compactNumber(commentCount)}</Text>
           </Text>
 
           {comments.length === 0 ? (
-            <Text style={styles.muted}>{t("post.noComments")}</Text>
+            <Text className="text-sm text-muted">{t("post.noComments")}</Text>
           ) : (
             threads.map(({ root, replies }) => {
               // Long conversations show the latest replies; older ones are one tap away
@@ -321,10 +318,10 @@ function PostDetail({ postId }: { postId: number }) {
                       onPress={() => setExpanded((prev) => new Set(prev).add(root.id))}
                       accessibilityRole="button"
                       hitSlop={6}
-                      style={styles.moreReplies}
+                      className="ml-[46px] flex-row items-center gap-2 py-1.5"
                     >
-                      <View style={styles.moreRepliesLine} />
-                      <Text style={styles.moreRepliesText}>
+                      <View className="h-0.5 w-6 bg-muted" />
+                      <Text className="text-[13px] font-bold text-muted">
                         {hidden === 1 ? t("post.viewRepliesOne") : t("post.viewReplies", { count: hidden })}
                       </Text>
                     </Pressable>
@@ -344,14 +341,15 @@ function PostDetail({ postId }: { postId: number }) {
             })
           )}
         </View>
-      </Animated.ScrollView>
+      </AnimatedScrollView>
 
-      <View style={[styles.topBar, { height: barHeight, paddingTop: insets.top + 8 }]}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.topBarBg, { opacity: barOpacity }]} />
+      {/* Buttons stay fixed; the white bar and title fade in once the hero scrolls away */}
+      <View className="absolute left-0 right-0 top-0 flex-row items-start gap-2.5 px-4" style={{ height: barHeight, paddingTop: insets.top + 8 }}>
+        <AnimatedView className="absolute inset-0 border-b border-line bg-white" style={{ opacity: barOpacity }} />
         <RoundButton icon="chevron-back" label={t("post.back")} onPress={() => router.back()} />
-        <Animated.Text style={[styles.topBarTitle, { opacity: barOpacity }]} numberOfLines={1}>
+        <AnimatedText className="h-[42px] flex-1 text-[17px] font-bold leading-[42px] text-ink" style={{ opacity: barOpacity }} numberOfLines={1}>
           {post.title ?? post.place.name}
-        </Animated.Text>
+        </AnimatedText>
         <RoundButton icon="paper-plane-outline" label={t("feed.share")} onPress={share} />
         {isMine ? (
           <RoundButton icon="ellipsis-horizontal" label={t("post.more")} onPress={openMenu} />
@@ -366,36 +364,36 @@ function PostDetail({ postId }: { postId: number }) {
       </View>
 
       <Modal visible={mapOpen} animationType="slide" onRequestClose={() => setMapOpen(false)}>
-        <View style={styles.mapModal}>
-          <TripMap stops={post.stops} interactive style={StyleSheet.absoluteFill} />
-          <View style={[styles.mapModalTop, { top: insets.top + 8 }]}>
+        <View className="flex-1 bg-lime-tint">
+          <TripMap stops={post.stops} interactive className="absolute inset-0" />
+          <View className="absolute left-4 right-4 flex-row items-center gap-3" style={{ top: insets.top + 8 }}>
             <RoundButton icon="close" label={t("post.closeMap")} onPress={() => setMapOpen(false)} />
-            <View style={styles.mapModalTitle}>
-              <Text style={styles.mapModalTitleText} numberOfLines={1}>{post.title ?? post.place.name}</Text>
-              <Text style={styles.mapModalSubtitle}>{mapSubtitle}</Text>
+            <View className="flex-1 rounded-[21px] bg-white/95 px-4 py-2">
+              <Text className="text-base font-bold text-ink" numberOfLines={1}>{post.title ?? post.place.name}</Text>
+              <Text className="text-xs text-muted">{mapSubtitle}</Text>
             </View>
           </View>
-          <View style={[styles.mapModalBottom, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View className="absolute bottom-0 left-4 right-4" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
             <PrimaryButton title={goLabel} icon="navigate" onPress={go} />
           </View>
         </View>
       </Modal>
 
       {replyTo ? (
-        <View style={styles.replyBar}>
-          <Text style={styles.replyBarText} numberOfLines={1}>
-            {t("post.replyingTo")} <Text style={styles.replyBarName}>{replyTo.name}</Text>
+        <View className="flex-row items-center gap-2 border-t border-line bg-soft-gray px-4 py-2">
+          <Text className="flex-1 text-[13px] text-muted" numberOfLines={1}>
+            {t("post.replyingTo")} <Text className="font-bold text-ink">{replyTo.name}</Text>
           </Text>
           <Pressable onPress={() => setReplyTo(null)} accessibilityRole="button" accessibilityLabel={t("post.cancelReply")} hitSlop={10}>
             <Ionicons name="close" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
       ) : null}
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View className="flex-row items-end gap-2.5 border-t border-line bg-white px-4 pt-2.5" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
         {user ? <Avatar name={user.name} size={36} uri={user.avatarUrl} /> : null}
         <TextInput
           ref={inputRef}
-          style={styles.input}
+          className="max-h-[110px] min-h-10 flex-1 rounded-[20px] bg-soft-gray px-4 py-2.5 text-[15px] text-ink"
           value={draft}
           onChangeText={setDraft}
           placeholder={
@@ -412,11 +410,7 @@ function PostDetail({ postId }: { postId: number }) {
           disabled={!draft.trim()}
           accessibilityRole="button"
           accessibilityLabel={t("post.send")}
-          style={({ pressed }) => [
-            styles.sendButton,
-            !draft.trim() && styles.sendDisabled,
-            pressed && styles.sendPressed,
-          ]}
+          className={cn("h-10 w-10 items-center justify-center rounded-full bg-deep-green active:bg-teal-green", !draft.trim() && "opacity-40")}
         >
           <Ionicons name="arrow-up" size={20} color={colors.white} />
         </Pressable>
@@ -426,8 +420,11 @@ function PostDetail({ postId }: { postId: number }) {
 }
 
 const VISIBLE_REPLIES = 2;
+const SECTION_TITLE = "mb-1.5 text-lg font-bold text-ink";
 
-const stopsLabel = (n: number) => (n === 1 ? t("post.stopsCountOne") : t("post.stopsCount", { count: n }));
+function Divider() {
+  return <View className="my-4.5 h-px bg-line" />;
+}
 
 function CommentRow({
   comment,
@@ -443,21 +440,21 @@ function CommentRow({
   const { user } = useAuth();
   const openAuthor = () => openProfile(comment.author.id, user?.id);
   return (
-    <View style={[styles.comment, reply && styles.replyRow]}>
+    <View className={cn("flex-row gap-3 py-2.5", reply && "ml-[46px] py-1.5")}>
       <Pressable onPress={openAuthor} accessibilityRole="button" accessibilityLabel={comment.author.name} hitSlop={4}>
         <Avatar name={comment.author.name} size={reply ? 28 : 34} uri={comment.author.avatarUrl} />
       </Pressable>
-      <View style={styles.commentBody}>
-        <View style={styles.commentHeader}>
-          <Text style={styles.commentAuthor} onPress={openAuthor}>{comment.author.name}</Text>
-          <Text style={styles.commentTime}>{timeAgo(comment.createdAt)}</Text>
+      <View className="flex-1 gap-[3px]">
+        <View className="flex-row items-baseline gap-2">
+          <Text className="text-sm font-bold text-ink" onPress={openAuthor}>{comment.author.name}</Text>
+          <Text className="text-xs text-muted">{timeAgo(comment.createdAt)}</Text>
         </View>
-        <Text style={styles.commentText}>
-          {mention ? <Text style={styles.mention}>@{mention} </Text> : null}
+        <Text className="text-[15px] leading-[21px] text-ink">
+          {mention ? <Text className="font-bold text-deep-green">@{mention} </Text> : null}
           {comment.text}
         </Text>
-        <Pressable onPress={() => onReply(comment)} accessibilityRole="button" hitSlop={8} style={styles.replyButton}>
-          <Text style={styles.replyButtonText}>{t("post.reply")}</Text>
+        <Pressable onPress={() => onReply(comment)} accessibilityRole="button" hitSlop={8} className="self-start pt-0.5">
+          <Text className="text-[13px] font-bold text-muted">{t("post.reply")}</Text>
         </Pressable>
       </View>
     </View>
@@ -466,6 +463,7 @@ function CommentRow({
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
+/** Translucent round button floating over the photo / map */
 function RoundButton({
   icon,
   label,
@@ -483,18 +481,18 @@ function RoundButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
-      style={({ pressed }) => [styles.roundButton, pressed && styles.roundButtonPressed]}
+      className="h-[42px] w-[42px] items-center justify-center rounded-full border border-line bg-white/90 active:bg-soft-gray"
     >
       <Ionicons name={icon} size={22} color={color} />
     </Pressable>
   );
 }
 
-function Chip({ icon, label }: { icon: IconName; label: string }) {
+function InfoChip({ icon, label }: { icon: IconName; label: string }) {
   return (
-    <View style={styles.chip}>
+    <View className="flex-row items-center gap-1.5 rounded-2xl bg-lime-tint px-3 py-[7px]">
       <Ionicons name={icon} size={14} color={colors.deepGreen} />
-      <Text style={styles.chipText}>{label}</Text>
+      <Text className="text-[13px] font-bold text-deep-green">{label}</Text>
     </View>
   );
 }
@@ -502,215 +500,12 @@ function Chip({ icon, label }: { icon: IconName; label: string }) {
 function NotFound() {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.notFound, { paddingTop: insets.top }]}>
+    <View className="flex-1 items-center justify-center gap-3 bg-white" style={{ paddingTop: insets.top }}>
       <Ionicons name="compass" size={56} color={colors.limeGreen} />
-      <Text style={styles.notFoundText}>{t("post.notFound")}</Text>
+      <Text className="text-[17px] font-bold text-ink">{t("post.notFound")}</Text>
       <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={8}>
-        <Text style={styles.link}>{t("post.back")}</Text>
+        <Text className="text-base font-bold text-teal-green">{t("post.back")}</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.white },
-  scrollContent: { paddingBottom: 24 },
-  hero: { width: "100%", backgroundColor: colors.limeTint },
-  topBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  topBarBg: {
-    backgroundColor: colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  topBarTitle: {
-    flex: 1,
-    height: 42,
-    lineHeight: 42,
-    color: colors.inkBlack,
-    fontSize: 17,
-    fontWeight: font.bold,
-  },
-  roundButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  roundButtonPressed: { backgroundColor: colors.softGray },
-
-  sheet: {
-    marginTop: -28,
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-  },
-  placeName: { color: colors.inkBlack, fontSize: 26, fontWeight: font.bold },
-  country: { color: colors.textMuted, fontSize: 15, fontWeight: font.regular, marginTop: 4 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: colors.limeTint,
-  },
-  chipText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
-
-  authorRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, marginLeft: -12 },
-  authorLink: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  authorText: { flex: 1, gap: 2 },
-  follow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: colors.deepGreen,
-  },
-  followActive: { backgroundColor: colors.limeTint },
-  followText: { color: colors.white, fontSize: 14, fontWeight: font.bold },
-  followTextActive: { color: colors.deepGreen },
-  tookTrip: { marginTop: 12, alignItems: "center" },
-  authorName: { color: colors.inkBlack, fontSize: 16, fontWeight: font.bold },
-  muted: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular },
-  caption: {
-    color: colors.inkBlack,
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: font.regular,
-    marginTop: 14,
-  },
-
-  statsRow: { flexDirection: "row", gap: 24, marginTop: 18 },
-  stat: { flexDirection: "row", alignItems: "center", gap: 6 },
-  statText: { color: colors.inkBlack, fontSize: 15, fontWeight: font.regular },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 18 },
-
-  sectionHeader: { marginBottom: 12 },
-  sectionTitle: { color: colors.inkBlack, fontSize: 18, fontWeight: font.bold, marginBottom: 6 },
-  mapPreview: {
-    height: 220,
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: colors.limeTint,
-  },
-  expandBadge: {
-    position: "absolute",
-    right: 12,
-    bottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.95)",
-  },
-  expandText: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
-  goButton: { marginTop: 14, marginBottom: 24 },
-  mapModal: { flex: 1, backgroundColor: colors.limeTint },
-  mapModalTop: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  mapModalTitle: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.95)",
-  },
-  mapModalTitleText: { color: colors.inkBlack, fontSize: 16, fontWeight: font.bold },
-  mapModalSubtitle: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular },
-  mapModalBottom: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 0,
-  },
-  sectionCount: { color: colors.textMuted, fontWeight: font.regular },
-  comment: { flexDirection: "row", gap: 12, paddingVertical: 10 },
-  commentBody: { flex: 1, gap: 3 },
-  commentHeader: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  commentAuthor: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
-  commentTime: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular },
-  commentText: { color: colors.inkBlack, fontSize: 15, lineHeight: 21, fontWeight: font.regular },
-  mention: { color: colors.deepGreen, fontWeight: font.bold },
-  replyRow: { marginLeft: 46, paddingVertical: 6 },
-  replyButton: { alignSelf: "flex-start", paddingTop: 2 },
-  replyButtonText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold },
-  moreReplies: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: 46, paddingVertical: 6 },
-  moreRepliesLine: { width: 24, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.textMuted },
-  moreRepliesText: { color: colors.textMuted, fontSize: 13, fontWeight: font.bold },
-  replyBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.softGray,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  replyBarText: { flex: 1, color: colors.textMuted, fontSize: 13 },
-  replyBarName: { color: colors.inkBlack, fontWeight: font.bold },
-
-  composer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: colors.white,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 110,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderRadius: 20,
-    backgroundColor: colors.softGray,
-    color: colors.inkBlack,
-    fontSize: 15,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.deepGreen,
-  },
-  sendDisabled: { opacity: 0.4 },
-  sendPressed: { backgroundColor: colors.tealGreen },
-
-  notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: colors.white },
-  notFoundText: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
-  link: { color: colors.tealGreen, fontSize: 16, fontWeight: font.bold },
-});

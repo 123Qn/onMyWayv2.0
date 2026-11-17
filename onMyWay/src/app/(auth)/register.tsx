@@ -4,7 +4,7 @@ import { Link } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
 import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
-import { AuthScreen, footerStyles } from "../../components/AuthScreen";
+import { AuthScreen, footerLink, footerText } from "../../components/AuthScreen";
 import { FormField, type TextInputRef } from "../../components/FormField";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { GoogleSignInButton } from "../../components/GoogleSignInButton";
@@ -61,9 +61,9 @@ export default function RegisterScreen() {
       error={error}
       footer={
         <>
-          <Text style={footerStyles.text}>{t("auth.register.hasAccount")}</Text>
-          <Link href="/login" replace style={footerStyles.link}>
-            {t("auth.register.goToLogin")}
+          <Text className={footerText}>{t("auth.register.hasAccount")}</Text>
+          <Link href="/login" replace>
+            <Text className={footerLink}>{t("auth.register.goToLogin")}</Text>
           </Link>
         </>
       }

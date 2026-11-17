@@ -1,4 +1,6 @@
-// Brand colors from Docs/onMyWay-BrandBook.pdf
+// Brand colors from Docs/onMyWay-BrandBook.pdf, for places that need a raw value (icons, SVG, maps).
+// Styling uses the same tokens as Tailwind classes, defined in src/global.css (bg-deep-green, text-ink...).
+// Typography (font-normal / font-bold) and radii (rounded-md 14, rounded-lg 24) live there too.
 export const colors = {
   // Primary
   deepGreen: "#0B7F70",
@@ -27,14 +29,3 @@ export const avatarPalette = [
   { bg: colors.skyBlue, fg: colors.white },
   { bg: colors.limeGreen, fg: colors.inkBlack },
 ];
-
-// Brand typography: system font, Regular 400 for body/captions, Bold 700 for titles/headings/usernames
-export const font = {
-  regular: "400",
-  bold: "700",
-} as const;
-
-export const radius = {
-  md: 14,
-  lg: 24,
-};

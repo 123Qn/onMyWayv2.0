@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
@@ -9,7 +8,7 @@ import { useFeedPosts } from "../../lib/feed";
 import { loadMoreFeed, refreshFeed } from "../../lib/postsApi";
 import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
-import { colors, font } from "../../lib/theme";
+import { colors } from "../../lib/theme";
 import { useRewards } from "../../lib/rewards";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { Wordmark } from "../../components/BrandLogo";
@@ -17,6 +16,7 @@ import { CategoryChips, type CategoryFilter } from "../../components/CategoryChi
 import { DestinationFilter, type Destination } from "../../components/DestinationFilter";
 import { OnTheRoad } from "../../components/OnTheRoad";
 import { PostCard } from "../../components/PostCard";
+import { Screen } from "../../components/ui";
 
 export default function FeedScreen() {
   const { user } = useAuth();
@@ -73,10 +73,10 @@ export default function FeedScreen() {
   );
 
   const header = (
-    <View style={styles.header}>
-      <View style={styles.topBar}>
+    <View className="gap-4.5 pb-4 pt-2">
+      <View className="flex-row items-center justify-between px-5">
         <Wordmark size={28} />
-        <View style={styles.topActions}>
+        <View className="flex-row items-center gap-3.5">
           <Pressable
             onPress={() => router.push("/notifications")}
             accessibilityRole="button"
@@ -84,12 +84,12 @@ export default function FeedScreen() {
               unread ? `${t("notifications.open")}, ${t("notifications.unread", { count: unread })}` : t("notifications.open")
             }
             hitSlop={8}
-            style={styles.bell}
+            className="h-10 w-10 items-center justify-center"
           >
             <Ionicons name={unread ? "notifications" : "notifications-outline"} size={24} color={colors.inkBlack} />
             {unread ? (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text>
+              <View className="absolute right-0 top-0.5 h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-2 border-soft-gray bg-heart px-1">
+                <Text className="text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</Text>
               </View>
             ) : null}
           </Pressable>
@@ -108,7 +108,7 @@ export default function FeedScreen() {
 
       <OnTheRoad />
 
-      <View style={styles.filterRow}>
+      <View className="-mt-0.5 px-5">
         <DestinationFilter
           destinations={destinations}
           value={country}
@@ -122,24 +122,24 @@ export default function FeedScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <Screen className="flex-1 bg-soft-gray" edges={["top"]}>
       <FlatList
         data={posts}
         keyExtractor={(post) => String(post.id)}
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={header}
         ListEmptyComponent={
-          <View style={styles.empty}>
+          <View className="items-center gap-2 pt-12">
             <Ionicons name="compass" size={48} color={colors.limeGreen} />
-            <Text style={styles.emptyTitle}>{t("feed.empty")}</Text>
-            <Text style={styles.emptyHint}>{t("feed.emptyHint")}</Text>
+            <Text className="text-[17px] font-bold text-ink">{t("feed.empty")}</Text>
+            <Text className="text-sm text-muted">{t("feed.emptyHint")}</Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={() => <View className="h-4" />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.6}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.deepGreen} style={styles.more} /> : undefined}
-        contentContainerStyle={styles.content}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.deepGreen} className="my-5" /> : undefined}
+        contentContainerClassName="pb-6"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={reload} colors={[colors.deepGreen]} tintColor={colors.deepGreen} />
         }
@@ -147,41 +147,6 @@ export default function FeedScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.softGray },
-  content: { paddingBottom: 24 },
-  more: { marginVertical: 20 },
-  header: { paddingTop: 8, paddingBottom: 16, gap: 18 },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-  },
-  topActions: { flexDirection: "row", alignItems: "center", gap: 14 },
-  bell: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  bellBadge: {
-    position: "absolute",
-    top: 2,
-    right: 0,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.heart,
-    borderWidth: 2,
-    borderColor: colors.softGray,
-  },
-  bellBadgeText: { color: colors.white, fontSize: 10, fontWeight: font.bold },
-  filterRow: { paddingHorizontal: 20, marginTop: -2 },
-  separator: { height: 16 },
-  empty: { alignItems: "center", paddingTop: 48, gap: 8 },
-  emptyTitle: { color: colors.inkBlack, fontSize: 17, fontWeight: font.bold },
-  emptyHint: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular },
-});

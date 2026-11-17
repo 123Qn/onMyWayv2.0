@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/AuthContext";
 import { ApiError } from "../lib/api";
+import { cn } from "../lib/cn";
 import { GoogleAuthError } from "../lib/googleAuth";
-import { colors, font, radius } from "../lib/theme";
+import { colors } from "../lib/theme";
 import { t } from "../i18n";
 
 function googleErrorMessage(e: unknown) {
@@ -23,6 +24,7 @@ type Props = { onError: (message: string) => void; disabled?: boolean };
 export function GoogleSignInButton({ onError, disabled }: Props) {
   const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
+  const inactive = disabled || loading;
 
   const handlePress = async () => {
     onError("");
@@ -37,55 +39,33 @@ export function GoogleSignInButton({ onError, disabled }: Props) {
   };
 
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.divider}>
-        <View style={styles.line} />
-        <Text style={styles.dividerText}>{t("common.or")}</Text>
-        <View style={styles.line} />
+    <View className="gap-4">
+      <View className="flex-row items-center gap-3">
+        <View className="h-px flex-1 bg-line" />
+        <Text className="text-sm text-muted">{t("common.or")}</Text>
+        <View className="h-px flex-1 bg-line" />
       </View>
 
       <Pressable
         onPress={handlePress}
-        disabled={disabled || loading}
+        disabled={inactive}
         accessibilityRole="button"
         accessibilityLabel={t("auth.google.continue")}
-        accessibilityState={{ disabled: disabled || loading, busy: loading }}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.pressed,
-          (disabled || loading) && styles.inactive,
-        ]}
+        accessibilityState={{ disabled: inactive, busy: loading }}
+        className={cn(
+          "h-[54px] flex-row items-center justify-center gap-2.5 rounded-md border-[1.5px] border-line bg-white active:bg-soft-gray",
+          inactive && "opacity-60"
+        )}
       >
         {loading ? (
           <ActivityIndicator color={colors.deepGreen} />
         ) : (
           <>
             <Ionicons name="logo-google" size={20} color={colors.inkBlack} />
-            <Text style={styles.title}>{t("auth.google.continue")}</Text>
+            <Text className="text-base font-bold text-ink">{t("auth.google.continue")}</Text>
           </>
         )}
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: { gap: 16 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 12 },
-  line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
-  dividerText: { color: colors.textMuted, fontSize: 14, fontWeight: font.regular },
-  button: {
-    height: 54,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  pressed: { backgroundColor: colors.softGray },
-  inactive: { opacity: 0.6 },
-  title: { color: colors.inkBlack, fontSize: 16, fontWeight: font.bold },
-});

@@ -1,15 +1,15 @@
-import { View, Pressable, StyleSheet, Animated } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { cn } from "../lib/cn";
 import { tabBarProgress } from "../lib/tabBarVisibility";
+import { colors } from "../lib/theme";
 import { t, type TranslationKey } from "../i18n";
+import { AnimatedView } from "./ui/Screen";
 
-const ACTIVE = "#0B7F70";
 const INACTIVE = "#65676B";
-const BORDER = "#CED0D4";
-const LIME = "#8BC34A";
 const ITEM_H = 52;
 
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -30,6 +30,7 @@ export function CustomTabBar({ state, navigateToTab }: BottomTabBarProps) {
   const fullHeight = ITEM_H + bottomPad + StyleSheet.hairlineWidth;
   const current = state.routes[state.index]?.name;
 
+  // Slides away while scrolling down (tabBarProgress 1 -> 0)
   const height = tabBarProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, fullHeight],
@@ -48,69 +49,35 @@ export function CustomTabBar({ state, navigateToTab }: BottomTabBarProps) {
           if (route) navigateToTab(route.key);
         }}
         android_ripple={{ color: "#0000001A", borderless: true }}
-        style={styles.item}
+        className="h-[52px] flex-1 items-center justify-center"
       >
-        <View style={[styles.indicator, active && styles.indicatorOn]} />
-        <Ionicons
-          name={active ? item.iconActive : item.icon}
-          size={26}
-          color={active ? ACTIVE : INACTIVE}
-        />
+        <View className={cn("absolute top-0 h-[3px] w-9 rounded-b-[3px]", active ? "bg-deep-green" : "bg-transparent")} />
+        <Ionicons name={active ? item.iconActive : item.icon} size={26} color={active ? colors.deepGreen : INACTIVE} />
       </Pressable>
     );
   };
 
   return (
-    <Animated.View style={{ height, opacity: tabBarProgress, overflow: "hidden" }}>
-      <View style={[styles.bar, { height: fullHeight, paddingBottom: bottomPad }]}>
+    <AnimatedView className="overflow-hidden" style={{ height, opacity: tabBarProgress }}>
+      <View
+        className="flex-row border-t border-[#CED0D4] bg-white"
+        style={{ height: fullHeight, paddingBottom: bottomPad, borderTopWidth: StyleSheet.hairlineWidth }}
+      >
         {LEFT.map(renderItem)}
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("tabs.createTrip")}
           onPress={() => router.push("/create")}
-          style={styles.item}
+          className="h-[52px] flex-1 items-center justify-center"
         >
-          <View style={styles.plus}>
-            <Ionicons name="add" size={24} color="#fff" />
+          <View className="h-7 w-10 items-center justify-center rounded-[10px] bg-lime-green">
+            <Ionicons name="add" size={24} color={colors.white} />
           </View>
         </Pressable>
 
         {RIGHT.map(renderItem)}
       </View>
-    </Animated.View>
+    </AnimatedView>
   );
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: BORDER,
-  },
-  item: {
-    flex: 1,
-    height: ITEM_H,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  indicator: {
-    position: "absolute",
-    top: 0,
-    width: 36,
-    height: 3,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-    backgroundColor: "transparent",
-  },
-  indicatorOn: { backgroundColor: ACTIVE },
-  plus: {
-    width: 40,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: LIME,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

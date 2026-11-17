@@ -1,7 +1,8 @@
 import { useState, type ComponentRef, type Ref } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { Pressable, Text, TextInput, View, type TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, font, radius } from "../lib/theme";
+import { cn } from "../lib/cn";
+import { colors } from "../lib/theme";
 import { t } from "../i18n";
 
 export type TextInputRef = ComponentRef<typeof TextInput>;
@@ -14,18 +15,23 @@ type Props = TextInputProps & {
   ref?: Ref<TextInputRef>;
 };
 
-export function FormField({ label, icon, password, ref, style, onFocus, onBlur, ...inputProps }: Props) {
+export function FormField({ label, icon, password, ref, onFocus, onBlur, ...inputProps }: Props) {
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
 
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, focused && styles.fieldFocused]}>
+    <View className="gap-2">
+      <Text className="text-sm text-ink">{label}</Text>
+      <View
+        className={cn(
+          "h-[54px] flex-row items-center gap-2.5 rounded-md border-[1.5px] px-3.5",
+          focused ? "border-teal-green bg-white" : "border-line bg-soft-gray"
+        )}
+      >
         <Ionicons name={icon} size={20} color={focused ? colors.deepGreen : colors.textMuted} />
         <TextInput
           ref={ref}
-          style={[styles.input, style]}
+          className="h-full flex-1 text-base text-ink"
           placeholderTextColor={colors.textMuted}
           selectionColor={colors.tealGreen}
           cursorColor={colors.deepGreen}
@@ -56,27 +62,3 @@ export function FormField({ label, icon, password, ref, style, onFocus, onBlur, 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: { gap: 8 },
-  label: { color: colors.inkBlack, fontSize: 14, fontWeight: font.regular },
-  field: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.softGray,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    height: 54,
-  },
-  fieldFocused: { borderColor: colors.tealGreen, backgroundColor: colors.white },
-  input: {
-    flex: 1,
-    height: "100%",
-    color: colors.inkBlack,
-    fontSize: 16,
-    fontWeight: font.regular,
-  },
-});

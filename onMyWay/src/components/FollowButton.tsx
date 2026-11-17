@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 import { t } from "../i18n";
+import { cn } from "../lib/cn";
 import { useFollowing } from "../lib/postStore";
-import { colors, font } from "../lib/theme";
 
 /** Follow / Following toggle; onChange runs after the change was sent (e.g. to reload counts) */
 export function FollowButton({
@@ -25,21 +25,15 @@ export function FollowButton({
       accessibilityRole="button"
       accessibilityState={{ selected: isFollowing }}
       accessibilityLabel={`${isFollowing ? t("post.following") : t("post.follow")} ${user.name}`}
-      style={({ pressed }) => [compact ? styles.compact : styles.large, isFollowing && styles.following, pressed && styles.pressed]}
+      className={cn(
+        "items-center active:opacity-80",
+        compact ? "rounded-2xl px-3.5 py-[7px]" : "mt-2 min-w-40 rounded-[22px] py-2.5",
+        isFollowing ? "bg-lime-tint" : "bg-deep-green"
+      )}
     >
-      <Text style={[styles.text, compact && styles.textCompact, isFollowing && styles.followingText]}>
+      <Text className={cn("font-bold", compact ? "text-[13px]" : "text-[15px]", isFollowing ? "text-deep-green" : "text-white")}>
         {isFollowing ? t("post.following") : t("post.follow")}
       </Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  pressed: { opacity: 0.8 },
-  large: { minWidth: 160, alignItems: "center", marginTop: 8, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.deepGreen },
-  compact: { alignItems: "center", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: colors.deepGreen },
-  following: { backgroundColor: colors.limeTint },
-  text: { color: colors.white, fontSize: 15, fontWeight: font.bold },
-  textCompact: { fontSize: 13 },
-  followingText: { color: colors.deepGreen },
-});

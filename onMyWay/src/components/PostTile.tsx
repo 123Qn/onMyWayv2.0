@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { postKind, type FeedPost } from "../lib/feed";
-import { colors, font } from "../lib/theme";
+import { colors } from "../lib/theme";
+import { Img } from "./ui";
 
 const KIND_ICON = { trip: "map", moment: "camera", question: "chatbubbles" } as const;
 
@@ -17,56 +17,24 @@ export function PostTile({ post, size }: { post: FeedPost; size: number }) {
       onPress={() => router.push({ pathname: "/post/[id]", params: { id: String(post.id) } })}
       accessibilityRole="button"
       accessibilityLabel={post.title ?? post.caption}
-      style={({ pressed }) => [styles.tile, { width: size, height: size }, pressed && styles.pressed]}
+      className="overflow-hidden rounded-[10px] bg-lime-tint active:opacity-80"
+      style={{ width: size, height: size }}
     >
       {post.imageUrl ? (
-        <Image source={post.imageUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+        <Img source={post.imageUrl} className="absolute inset-0" contentFit="cover" transition={150} />
       ) : (
-        <View style={styles.tileText}>
-          <Text style={styles.tileQuestion} numberOfLines={4}>{post.caption}</Text>
+        <View className="flex-1 justify-center p-2">
+          <Text className="text-xs font-bold text-deep-green" numberOfLines={4}>{post.caption}</Text>
         </View>
       )}
-      <View style={styles.tileKind}>
+      <View className="absolute right-1.5 top-1.5 h-[22px] w-[22px] items-center justify-center rounded-full bg-ink/55">
         <Ionicons name={KIND_ICON[kind]} size={12} color={colors.white} />
       </View>
       {post.verified ? (
-        <View style={styles.tileVerified}>
+        <View className="absolute bottom-1.5 left-1.5 h-[22px] w-[22px] items-center justify-center rounded-full bg-ink/70">
           <Ionicons name="shield-checkmark" size={12} color={colors.limeGreen} />
         </View>
       ) : null}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  pressed: { opacity: 0.8 },
-  tile: {
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: colors.limeTint,
-  },
-  tileText: { flex: 1, padding: 8, justifyContent: "center" },
-  tileQuestion: { color: colors.deepGreen, fontSize: 12, fontWeight: font.bold },
-  tileKind: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(27,43,40,0.55)",
-  },
-  tileVerified: {
-    position: "absolute",
-    left: 6,
-    bottom: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(27,43,40,0.7)",
-  },
-});

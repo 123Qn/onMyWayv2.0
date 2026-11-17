@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -6,13 +6,10 @@ import {
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { t } from "../i18n";
@@ -21,7 +18,9 @@ import type { PlaceCategory, PostKind } from "../lib/feed";
 import { createPost, uploadPhoto, type NewPostStop } from "../lib/postsApi";
 import { PermissionError, pickPhotos, takePhoto, type PostPhoto } from "../lib/verify";
 import { LocationPicker, type Coords } from "../components/LocationPicker";
-import { colors, font, radius } from "../lib/theme";
+import { cn } from "../lib/cn";
+import { colors } from "../lib/theme";
+import { Chip, Img, Screen, SegmentedControl } from "../components/ui";
 
 const KINDS: { kind: PostKind; icon: keyof typeof Ionicons.glyphMap }[] = [
   { kind: "trip", icon: "map" },
@@ -239,58 +238,38 @@ export default function CreateScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("create.discard")} hitSlop={8} style={styles.iconButton}>
+    <Screen className="flex-1 bg-white" edges={["top", "bottom"]}>
+      <View className="flex-row items-center justify-between border-b border-line px-3 py-2">
+        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={t("create.discard")} hitSlop={8} className="h-10 w-10 items-center justify-center">
           <Ionicons name="close" size={26} color={colors.inkBlack} />
         </Pressable>
-        <Text style={styles.title}>{t("create.title")}</Text>
+        <Text className="text-lg font-bold text-ink">{t("create.title")}</Text>
         <Pressable
           onPress={submit}
           disabled={!canPost || posting}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canPost }}
-          style={({ pressed }) => [styles.postButton, !canPost && styles.postDisabled, pressed && styles.pressed]}
+          className={cn("rounded-[18px] px-4.5 py-2 active:opacity-70", canPost ? "bg-deep-green" : "bg-line")}
         >
-          {posting ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Text style={styles.postText}>{t("create.post")}</Text>
-          )}
+          {posting ? <ActivityIndicator size="small" color={colors.white} /> : <Text className="text-[15px] font-bold text-white">{t("create.post")}</Text>}
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <View style={styles.segment}>
-            {KINDS.map(({ kind: k, icon }) => {
-              const active = k === kind;
-              return (
-                <Pressable
-                  key={k}
-                  onPress={() => setKind(k)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  style={[styles.segmentItem, active && styles.segmentActive]}
-                >
-                  <Ionicons name={icon} size={16} color={active ? colors.white : colors.deepGreen} />
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t(`create.kinds.${k}`)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.hint}>{t(`create.kindHints.${kind}`)}</Text>
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
+        <ScrollView contentContainerClassName="p-5 pb-12" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <SegmentedControl
+            value={kind}
+            onChange={setKind}
+            options={KINDS.map(({ kind: k, icon }) => ({ value: k, label: t(`create.kinds.${k}`), icon }))}
+          />
+          <Text className="mt-2 text-[13px] text-muted">{t(`create.kindHints.${kind}`)}</Text>
 
           {kind === "trip" ? (
             <>
               {/* 1. Header */}
-              <Text style={styles.label}>{t("create.tripTitle")}</Text>
+              <Label>{t("create.tripTitle")}</Label>
               <TextInput
-                style={[styles.input, styles.titleInput]}
+                className={cn(INPUT, "text-lg font-bold")}
                 value={title}
                 onChangeText={setTitle}
                 placeholder={t("create.tripTitlePlaceholder")}
@@ -300,7 +279,7 @@ export default function CreateScreen() {
               />
 
               {/* 2. Cover */}
-              <Text style={styles.label}>{t("create.cover")}</Text>
+              <Label>{t("create.cover")}</Label>
               <PhotoSlot
                 photo={cover}
                 loading={busy === "cover"}
@@ -310,18 +289,18 @@ export default function CreateScreen() {
                 onPick={() => pickInto("cover", setCover)}
                 showVerification={false}
               />
-              <Text style={styles.fieldHint}>{t("create.coverHint")}</Text>
+              <Text className={FIELD_HINT}>{t("create.coverHint")}</Text>
 
               {/* 3. Locations, repeated */}
-              <Text style={styles.label}>{t("create.locations")}</Text>
-              <View style={styles.locations}>
+              <Label>{t("create.locations")}</Label>
+              <View className="gap-3.5">
                 {locations.map((loc, i) => (
-                  <View key={loc.key} style={styles.locationCard}>
-                    <View style={styles.locationHeader}>
-                      <View style={styles.locationNumber}>
-                        <Text style={styles.locationNumberText}>{i + 1}</Text>
+                  <View key={loc.key} className="gap-2.5 rounded-lg bg-soft-gray p-3.5">
+                    <View className="flex-row items-center gap-2.5">
+                      <View className="h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green">
+                        <Text className="text-[13px] font-bold text-white">{i + 1}</Text>
                       </View>
-                      <Text style={styles.locationTitle}>{t("create.locationN", { count: i + 1 })}</Text>
+                      <Text className="flex-1 text-[15px] font-bold text-ink">{t("create.locationN", { count: i + 1 })}</Text>
                       {locations.length > 1 ? (
                         <Pressable
                           onPress={() => setLocations((prev) => prev.filter((l) => l.key !== loc.key))}
@@ -361,7 +340,7 @@ export default function CreateScreen() {
                     />
 
                     <TextInput
-                      style={[styles.input, styles.locationName]}
+                      className={cn(INPUT, "font-bold")}
                       value={loc.name}
                       onChangeText={(v) => updateLocation(loc.key, { name: v })}
                       placeholder={t("create.locationNamePlaceholder")}
@@ -370,7 +349,7 @@ export default function CreateScreen() {
                       maxLength={100}
                     />
                     <TextInput
-                      style={[styles.input, styles.locationCaption]}
+                      className={cn(INPUT, "min-h-20")}
                       value={loc.caption}
                       onChangeText={(v) => updateLocation(loc.key, { caption: v })}
                       placeholder={t("create.locationCaptionPlaceholder")}
@@ -383,24 +362,26 @@ export default function CreateScreen() {
                     <Pressable
                       onPress={() => setPinFor(loc.key)}
                       accessibilityRole="button"
-                      style={({ pressed }) => [styles.pinRow, !loc.pin && styles.pinRowMissing, pressed && styles.pressed]}
+                      // Android keeps a previous dashed border unless the style is set explicitly
+                      className={cn(
+                        "flex-row items-center gap-2.5 rounded-md border-[1.5px] p-3 active:opacity-70",
+                        loc.pin ? "border-solid border-line bg-white" : "border-dashed border-lime-green bg-lime-tint"
+                      )}
                     >
                       <Ionicons
                         name={loc.pin ? (loc.pin.fromPhoto ? "shield-checkmark" : "location") : "add-circle"}
                         size={20}
                         color={colors.deepGreen}
                       />
-                      <View style={styles.flex}>
-                        <Text style={styles.pinTitle}>
+                      <View className="flex-1">
+                        <Text className="text-sm font-bold text-ink">
                           {loc.pin ? (loc.pin.fromPhoto ? t("create.pinFromPhoto") : t("create.pinManual")) : t("create.pinSet")}
                         </Text>
-                        <Text style={styles.pinSub}>
-                          {loc.pin
-                            ? `${loc.pin.latitude.toFixed(5)}, ${loc.pin.longitude.toFixed(5)}`
-                            : t("create.pinMissing")}
+                        <Text className="mt-px text-xs text-muted">
+                          {loc.pin ? `${loc.pin.latitude.toFixed(5)}, ${loc.pin.longitude.toFixed(5)}` : t("create.pinMissing")}
                         </Text>
                       </View>
-                      <Text style={styles.pinAction}>{loc.pin ? t("create.pinEdit") : t("create.pinOpen")}</Text>
+                      <Text className="text-[13px] font-bold text-deep-green">{loc.pin ? t("create.pinEdit") : t("create.pinOpen")}</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -410,10 +391,10 @@ export default function CreateScreen() {
                 <Pressable
                   onPress={() => setLocations((prev) => [...prev, newLocation()])}
                   accessibilityRole="button"
-                  style={({ pressed }) => [styles.addLocation, pressed && styles.pressed]}
+                  className="mt-3.5 flex-row items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-lime-green py-3.5 active:opacity-70"
                 >
                   <Ionicons name="add-circle" size={22} color={colors.deepGreen} />
-                  <Text style={styles.addLocationText}>{t("create.addLocation")}</Text>
+                  <Text className="text-[15px] font-bold text-deep-green">{t("create.addLocation")}</Text>
                 </Pressable>
               ) : null}
             </>
@@ -440,7 +421,7 @@ export default function CreateScreen() {
 
           {kind === "moment" ? (
             <>
-              <Text style={styles.label}>{t("create.photo")}</Text>
+              <Label>{t("create.photo")}</Label>
               <PhotoSlot
                 photo={momentPhoto}
                 loading={busy === "moment"}
@@ -450,53 +431,42 @@ export default function CreateScreen() {
                 onPick={() => pickInto("moment", setMomentPhoto, "camera")}
                 showVerification
               />
-              <Text style={styles.fieldHint}>{t("create.momentHint")}</Text>
+              <Text className={FIELD_HINT}>{t("create.momentHint")}</Text>
               {momentPhoto && !momentPhoto.verified ? (
-                <View style={[styles.banner, styles.bannerWarn]}>
-                  <Ionicons name="warning" size={22} color={colors.error} />
-                  <View style={styles.flex}>
-                    <Text style={styles.bannerTitle}>{t("create.momentNoGpsTitle")}</Text>
-                    <Text style={styles.bannerBody}>{t("create.momentNoGpsBody")}</Text>
-                  </View>
-                </View>
+                <Banner tone="warn" icon="warning" title={t("create.momentNoGpsTitle")} body={t("create.momentNoGpsBody")} />
               ) : null}
             </>
           ) : null}
 
           {hasProofPhoto && (kind !== "moment" || verified) ? (
-            <View style={[styles.banner, verified ? styles.bannerVerified : styles.bannerPlain]}>
-              <Ionicons
-                name={verified ? "shield-checkmark" : "information-circle"}
-                size={22}
-                color={verified ? colors.deepGreen : colors.textMuted}
-              />
-              <View style={styles.flex}>
-                <Text style={styles.bannerTitle}>
-                  {verified
-                    ? verifiedPlace
-                      ? t("create.verifiedTitle", { place: verifiedPlace.name })
-                      : t("create.verifiedHere")
-                    : t("create.unverifiedTitle")}
-                </Text>
-                <Text style={styles.bannerBody}>{verified ? t("create.verifiedBody") : t("create.unverifiedBody")}</Text>
-              </View>
-            </View>
+            <Banner
+              tone={verified ? "verified" : "plain"}
+              icon={verified ? "shield-checkmark" : "information-circle"}
+              title={
+                verified
+                  ? verifiedPlace
+                    ? t("create.verifiedTitle", { place: verifiedPlace.name })
+                    : t("create.verifiedHere")
+                  : t("create.unverifiedTitle")
+              }
+              body={verified ? t("create.verifiedBody") : t("create.unverifiedBody")}
+            />
           ) : null}
 
           {kind !== "trip" ? (
             <>
-              <Text style={styles.label}>{t("create.place")}</Text>
+              <Label>{t("create.place")}</Label>
               {verifiedPlace ? (
-                <View style={[styles.input, styles.lockedPlace]}>
+                <View className={cn(INPUT, "flex-row flex-wrap items-center gap-2 bg-soft-gray")}>
                   <Ionicons name="location" size={18} color={colors.deepGreen} />
-                  <Text style={styles.lockedPlaceText}>
+                  <Text className="text-[15px] font-bold text-ink">
                     {verifiedPlace.name}, {verifiedPlace.country}
                   </Text>
-                  <Text style={styles.fieldHint}>{t("create.placeFromPhotos")}</Text>
+                  <Text className={FIELD_HINT}>{t("create.placeFromPhotos")}</Text>
                 </View>
               ) : (
                 <TextInput
-                  style={styles.input}
+                  className={INPUT}
                   value={placeText}
                   onChangeText={setPlaceText}
                   placeholder={t("create.placePlaceholder")}
@@ -508,9 +478,9 @@ export default function CreateScreen() {
             </>
           ) : null}
 
-          <Text style={styles.label}>{kind === "trip" ? t("create.summary") : t("create.caption")}</Text>
+          <Label>{kind === "trip" ? t("create.summary") : t("create.caption")}</Label>
           <TextInput
-            style={[styles.input, styles.captionInput]}
+            className={cn(INPUT, "min-h-[100px]")}
             value={caption}
             onChangeText={setCaption}
             placeholder={
@@ -527,42 +497,31 @@ export default function CreateScreen() {
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>{t("create.category")}</Text>
-          <View style={styles.chips}>
-            {CATEGORIES.map((c) => {
-              const active = c === category;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => setCategory(c)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  style={[styles.chip, active && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(`feed.categories.${c}`)}</Text>
-                </Pressable>
-              );
-            })}
+          <Label>{t("create.category")}</Label>
+          <View className="flex-row flex-wrap gap-2">
+            {CATEGORIES.map((c) => (
+              <Chip key={c} label={t(`feed.categories.${c}`)} active={c === category} onPress={() => setCategory(c)} />
+            ))}
           </View>
 
           {kind === "trip" ? (
             <>
-              <Text style={styles.label}>{t("create.days")}</Text>
-              <View style={styles.stepper}>
+              <Label>{t("create.days")}</Label>
+              <View className="flex-row items-center gap-4">
                 <Pressable
                   onPress={() => setDays((d) => Math.max(1, d - 1))}
                   accessibilityRole="button"
                   accessibilityLabel={t("create.fewerDays")}
-                  style={styles.stepButton}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-lime-tint"
                 >
                   <Ionicons name="remove" size={20} color={colors.deepGreen} />
                 </Pressable>
-                <Text style={styles.stepValue}>{t("create.daysValue", { count: days })}</Text>
+                <Text className="min-w-20 text-center text-base font-bold text-ink">{t("create.daysValue", { count: days })}</Text>
                 <Pressable
                   onPress={() => setDays((d) => Math.min(60, d + 1))}
                   accessibilityRole="button"
                   accessibilityLabel={t("create.moreDays")}
-                  style={styles.stepButton}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-lime-tint"
                 >
                   <Ionicons name="add" size={20} color={colors.deepGreen} />
                 </Pressable>
@@ -571,7 +530,42 @@ export default function CreateScreen() {
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
+  );
+}
+
+const INPUT = "min-h-[50px] rounded-md border-[1.5px] border-line bg-white px-3.5 py-3 text-[15px] text-ink";
+const FIELD_HINT = "mt-1.5 text-xs text-muted";
+
+function Label({ children }: { children: ReactNode }) {
+  return <Text className="mb-2 mt-[22px] text-[15px] font-bold text-ink">{children}</Text>;
+}
+
+/** Colored note under the photos: verified place, plain info, or a warning */
+function Banner({
+  tone,
+  icon,
+  title,
+  body,
+}: {
+  tone: "verified" | "plain" | "warn";
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  body: string;
+}) {
+  const look = {
+    verified: { bg: "bg-lime-tint", color: colors.deepGreen },
+    plain: { bg: "bg-soft-gray", color: colors.textMuted },
+    warn: { bg: "bg-error-bg", color: colors.error },
+  }[tone];
+  return (
+    <View className={cn("mt-4.5 flex-row gap-3 rounded-md p-3.5", look.bg)}>
+      <Ionicons name={icon} size={22} color={look.color} />
+      <View className="flex-1">
+        <Text className="text-sm font-bold text-ink">{title}</Text>
+        <Text className="mt-0.5 text-[13px] leading-[18px] text-muted">{body}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -593,37 +587,36 @@ function PhotoSlot({
   onPick: () => void;
   showVerification: boolean;
 }) {
+  const slot = "w-full overflow-hidden rounded-md";
+  const empty = "items-center justify-center gap-1.5 border-[1.5px] border-dashed border-lime-green bg-lime-tint";
   if (loading) {
     return (
-      <View style={[styles.slot, styles.slotEmpty, { aspectRatio }]}>
+      <View className={cn(slot, empty)} style={{ aspectRatio }}>
         <ActivityIndicator color={colors.deepGreen} />
-        <Text style={styles.slotText}>{t("create.locating")}</Text>
+        <Text className="text-sm font-bold text-deep-green">{t("create.locating")}</Text>
       </View>
     );
   }
   if (!photo) {
     return (
-      <Pressable
-        onPress={onPick}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.slot, styles.slotEmpty, { aspectRatio }, pressed && styles.pressed]}
-      >
+      <Pressable onPress={onPick} accessibilityRole="button" className={cn(slot, empty, "active:opacity-70")} style={{ aspectRatio }}>
         <Ionicons name={emptyIcon} size={28} color={colors.deepGreen} />
-        <Text style={styles.slotText}>{emptyLabel}</Text>
+        <Text className="text-sm font-bold text-deep-green">{emptyLabel}</Text>
       </Pressable>
     );
   }
   return (
-    <View style={[styles.slot, { aspectRatio }]}>
-      <Image source={photo.uri} style={StyleSheet.absoluteFill} contentFit="cover" />
+    <View className={cn(slot, "bg-soft-gray")} style={{ aspectRatio }}>
+      <Img source={photo.uri} className="absolute inset-0" contentFit="cover" />
       {showVerification ? (
-        <View style={[styles.photoTag, photo.verified ? styles.tagVerified : styles.tagPlain]}>
-          <Ionicons
-            name={photo.verified ? "shield-checkmark" : "help-circle"}
-            size={13}
-            color={photo.verified ? colors.white : colors.inkBlack}
-          />
-          <Text style={[styles.photoTagText, photo.verified && styles.photoTagTextLight]} numberOfLines={1}>
+        <View
+          className={cn(
+            "absolute bottom-2.5 left-2.5 max-w-[60%] flex-row items-center gap-[5px] rounded-xl px-2 py-[5px]",
+            photo.verified ? "bg-deep-green" : "bg-white/90"
+          )}
+        >
+          <Ionicons name={photo.verified ? "shield-checkmark" : "help-circle"} size={13} color={photo.verified ? colors.white : colors.inkBlack} />
+          <Text className={cn("shrink text-xs font-bold", photo.verified ? "text-white" : "text-ink")} numberOfLines={1}>
             {photo.verified ? (photo.place?.name ?? t("create.photoVerified")) : t("create.photoNoLocation")}
           </Text>
         </View>
@@ -632,175 +625,11 @@ function PhotoSlot({
         onPress={onPick}
         accessibilityRole="button"
         accessibilityLabel={t("create.changePhoto")}
-        style={({ pressed }) => [styles.changePhoto, pressed && styles.pressed]}
+        className="absolute bottom-2.5 right-2.5 flex-row items-center gap-[5px] rounded-[14px] bg-ink/65 px-2.5 py-1.5 active:opacity-70"
       >
         <Ionicons name="swap-horizontal" size={14} color={colors.white} />
-        <Text style={styles.changePhotoText}>{t("create.changePhoto")}</Text>
+        <Text className="text-xs font-bold text-white">{t("create.changePhoto")}</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.white },
-  flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  iconButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  title: { color: colors.inkBlack, fontSize: 18, fontWeight: font.bold },
-  postButton: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 18, backgroundColor: colors.deepGreen },
-  postDisabled: { backgroundColor: colors.border },
-  postText: { color: colors.white, fontSize: 15, fontWeight: font.bold },
-  pressed: { opacity: 0.7 },
-  content: { padding: 20, paddingBottom: 48 },
-  segment: { flexDirection: "row", gap: 6, padding: 4, borderRadius: 16, backgroundColor: colors.limeTint },
-  segmentItem: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  segmentActive: { backgroundColor: colors.deepGreen },
-  segmentText: { color: colors.deepGreen, fontSize: 14, fontWeight: font.bold },
-  segmentTextActive: { color: colors.white },
-  hint: { color: colors.textMuted, fontSize: 13, fontWeight: font.regular, marginTop: 8 },
-  label: { color: colors.inkBlack, fontSize: 15, fontWeight: font.bold, marginTop: 22, marginBottom: 8 },
-  fieldHint: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular, marginTop: 6 },
-  input: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    color: colors.inkBlack,
-    fontSize: 15,
-  },
-  titleInput: { fontSize: 18, fontWeight: font.bold },
-  captionInput: { minHeight: 100 },
-  slot: { width: "100%", borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.softGray },
-  slotEmpty: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderColor: colors.limeGreen,
-    backgroundColor: colors.limeTint,
-  },
-  slotText: { color: colors.deepGreen, fontSize: 14, fontWeight: font.bold },
-  photoTag: {
-    position: "absolute",
-    left: 10,
-    bottom: 10,
-    maxWidth: "60%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  tagVerified: { backgroundColor: colors.deepGreen },
-  tagPlain: { backgroundColor: "rgba(255,255,255,0.92)" },
-  photoTagText: { flexShrink: 1, color: colors.inkBlack, fontSize: 12, fontWeight: font.bold },
-  photoTagTextLight: { color: colors.white },
-  changePhoto: {
-    position: "absolute",
-    right: 10,
-    bottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: "rgba(27,43,40,0.65)",
-  },
-  changePhotoText: { color: colors.white, fontSize: 12, fontWeight: font.bold },
-  locations: { gap: 14 },
-  locationCard: { gap: 10, padding: 14, borderRadius: radius.lg, backgroundColor: colors.softGray },
-  locationHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  locationNumber: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.deepGreen,
-  },
-  locationNumberText: { color: colors.white, fontSize: 13, fontWeight: font.bold },
-  locationTitle: { flex: 1, color: colors.inkBlack, fontSize: 15, fontWeight: font.bold },
-  locationName: { fontWeight: font.bold },
-  locationCaption: { minHeight: 80 },
-  pinRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-    borderWidth: 1.5,
-    // Android keeps a previous dashed style unless it is set explicitly
-    borderStyle: "solid",
-    borderColor: colors.border,
-  },
-  pinRowMissing: { borderStyle: "dashed", borderColor: colors.limeGreen, backgroundColor: colors.limeTint },
-  pinTitle: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
-  pinSub: { color: colors.textMuted, fontSize: 12, fontWeight: font.regular, marginTop: 1 },
-  pinAction: { color: colors.deepGreen, fontSize: 13, fontWeight: font.bold },
-  addLocation: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 14,
-    paddingVertical: 14,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderColor: colors.limeGreen,
-  },
-  addLocationText: { color: colors.deepGreen, fontSize: 15, fontWeight: font.bold },
-  banner: { flexDirection: "row", gap: 12, marginTop: 18, padding: 14, borderRadius: radius.md },
-  bannerVerified: { backgroundColor: colors.limeTint },
-  bannerPlain: { backgroundColor: colors.softGray },
-  bannerWarn: { backgroundColor: colors.errorBg },
-  bannerTitle: { color: colors.inkBlack, fontSize: 14, fontWeight: font.bold },
-  bannerBody: { color: colors.textMuted, fontSize: 13, lineHeight: 18, fontWeight: font.regular, marginTop: 2 },
-  lockedPlace: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, backgroundColor: colors.softGray },
-  lockedPlaceText: { color: colors.inkBlack, fontSize: 15, fontWeight: font.bold },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-  },
-  chipActive: { backgroundColor: colors.deepGreen, borderColor: colors.deepGreen },
-  chipText: { color: colors.inkBlack, fontSize: 14, fontWeight: font.regular },
-  chipTextActive: { color: colors.white, fontWeight: font.bold },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 16 },
-  stepButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.limeTint,
-  },
-  stepValue: { color: colors.inkBlack, fontSize: 16, fontWeight: font.bold, minWidth: 80, textAlign: "center" },
-});
