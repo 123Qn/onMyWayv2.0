@@ -135,7 +135,14 @@ const serialize = (row, stops, toUrl) => ({
 
 const withStops = async (rows, toUrl) => {
     const stops = await postModel.findStops(rows.map((r) => r.id));
-    return rows.map((row) => serialize(row, stops.filter((s) => s.post_id === row.id), toUrl));
+    // Group once instead of scanning every stop for every post
+    const byPost = new Map();
+    for (const s of stops) {
+        const list = byPost.get(s.post_id);
+        if (list) list.push(s);
+        else byPost.set(s.post_id, [s]);
+    }
+    return rows.map((row) => serialize(row, byPost.get(row.id) ?? [], toUrl));
 };
 
 const listFeed = async (user, query, toUrl) => {

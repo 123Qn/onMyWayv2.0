@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, Text, View, type ListRenderItem } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
-import { useFeedPosts } from "../../lib/feed";
+import { useFeedPosts, type FeedPost } from "../../lib/feed";
 import { loadMoreFeed, refreshFeed } from "../../lib/postsApi";
 import { refreshUnreadCount, useUnreadCount } from "../../lib/notifications";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
@@ -18,6 +18,9 @@ import { DestinationFilter, type Destination } from "../../components/Destinatio
 import { OnTheRoad } from "../../components/OnTheRoad";
 import { PostCard } from "../../components/PostCard";
 import { Screen } from "../../components/ui";
+
+const renderPost: ListRenderItem<FeedPost> = ({ item }) => <PostCard post={item} />;
+const Separator = () => <View className="h-4" />;
 
 export default function FeedScreen() {
   const { user } = useAuth();
@@ -127,7 +130,7 @@ export default function FeedScreen() {
       <FlatList
         data={posts}
         keyExtractor={(post) => String(post.id)}
-        renderItem={({ item }) => <PostCard post={item} />}
+        renderItem={renderPost}
         ListHeaderComponent={header}
         ListEmptyComponent={
           <View className="items-center gap-2 pt-12">
@@ -136,7 +139,12 @@ export default function FeedScreen() {
             <Text className="text-sm text-muted">{t("feed.emptyHint")}</Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View className="h-4" />}
+        ItemSeparatorComponent={Separator}
+        // Lazy list: a few cards at start, the rest built just before they scroll into view
+        initialNumToRender={3}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === "android"}
         onEndReached={loadMore}
         onEndReachedThreshold={0.6}
         ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.deepGreen} className="my-5" /> : undefined}

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -7,8 +7,9 @@ import { ApiError } from "../../lib/api";
 import { t } from "../../i18n";
 import { useFocusLoad, useRefresh } from "../../lib/hooks";
 import { useRewards, type BadgeProgress } from "../../lib/rewards";
-import type { FeedPost } from "../../lib/feed";
-import { fetchUserPosts, refreshMyProfile } from "../../lib/profileApi";
+import { rememberPosts, type FeedPost } from "../../lib/feed";
+import { useQuery } from "../../lib/cache";
+import { fetchUserPosts, refreshMyProfile, userPostsKey } from "../../lib/profileApi";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors } from "../../lib/theme";
 import { AvatarFrame } from "../../components/AvatarFrame";
@@ -17,20 +18,30 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { BadgesCard, LevelPill, PostsGridCard, ProfileHero, ShowcaseCard, TravelStatRow } from "../../components/profile/ProfileParts";
 import { Screen } from "../../components/ui";
 
+const EMPTY_POSTS: FeedPost[] = [];
+
 export default function ProfileScreen() {
   const { user, signOut, deleteAccount } = useAuth();
   const { frame, pinned, stats, counts, level, progress, unlocked, about } = useRewards();
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+
   const [busy, setBusy] = useState<"logout" | "delete" | null>(null);
   const [selected, setSelected] = useState<BadgeProgress | null>(null);
 
-  // Stats and my posts are fresh every time the tab is opened (e.g. right after posting)
-  const load = useCallback(async () => {
-    if (!user) return;
-    await Promise.all([refreshMyProfile(user.id).catch(() => {}), fetchUserPosts(user.id).then(setPosts, () => {})]);
+  // My posts show at once from the cache; stats and posts are refreshed every time the tab is
+  // opened (e.g. right after posting)
+  const myPosts = useQuery(user ? userPostsKey(user.id) : null, () => fetchUserPosts(user!.id), { persist: true });
+  const posts = myPosts.data ?? EMPTY_POSTS;
+  useEffect(() => rememberPosts(posts), [posts]);
+  const loadStats = useCallback(async () => {
+    if (user) await refreshMyProfile(user.id).catch(() => {});
   }, [user]);
-  useFocusLoad(load);
-  const { refreshing, onRefresh } = useRefresh(load);
+  useFocusLoad(loadStats);
+  const statsRefresh = useRefresh(loadStats);
+  const refreshing = myPosts.refreshing || statsRefresh.refreshing;
+  const onRefresh = () => {
+    myPosts.refresh();
+    statsRefresh.onRefresh();
+  };
 
   const confirmSignOut = () => {
     Alert.alert(t("profile.signOut"), t("profile.signOutConfirm"), [

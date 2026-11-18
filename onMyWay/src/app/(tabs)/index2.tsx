@@ -1,12 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { flagEmoji, stopsLabel } from "../../lib/format";
-import { postKind, useFeedPosts, type FeedPost } from "../../lib/feed";
-import { useFocusLoad, useRefresh } from "../../lib/hooks";
+import { postKind, rememberPosts, useFeedPosts, type FeedPost } from "../../lib/feed";
+import { sizedImage } from "../../lib/image";
+import { useQuery } from "../../lib/cache";
 import { useSaveOverrides } from "../../lib/postStore";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { fetchSavedPosts, fetchTripHistory, type PastTrip } from "../../lib/tripsApi";
@@ -23,19 +24,22 @@ const openPost = (post: FeedPost) =>
 
 export default function TripsScreen() {
   const recorder = useTripRecorder();
-  const [saved, setSaved] = useState<FeedPost[] | null>(null);
-  const [history, setHistory] = useState<PastTrip[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  const load = useCallback(async () => {
-    const [s, h] = await Promise.allSettled([fetchSavedPosts(), fetchTripHistory()]);
-    if (s.status === "fulfilled") setSaved(s.value);
-    if (h.status === "fulfilled") setHistory(h.value);
-    setFailed(s.status === "rejected" && h.status === "rejected");
-  }, []);
-  // Fresh every time the tab is opened (e.g. after saving a post or ending a trip)
-  useFocusLoad(load);
-  const { refreshing, onRefresh } = useRefresh(load);
+  // Last known lists show at once (also right after app start); refreshed every time the tab
+  // is opened (e.g. after saving a post or ending a trip)
+  const savedQuery = useQuery("posts:saved", fetchSavedPosts, { persist: true });
+  const historyQuery = useQuery("trip-runs", fetchTripHistory, { persist: true });
+  const saved = savedQuery.data ?? null;
+  const history = historyQuery.data ?? null;
+  const failed = savedQuery.failed && historyQuery.failed;
+  const refreshing = savedQuery.refreshing || historyQuery.refreshing;
+  const onRefresh = () => {
+    savedQuery.refresh();
+    historyQuery.refresh();
+  };
+  // Lists read from the disk cache: make their posts openable without another request
+  useEffect(() => {
+    rememberPosts([...(saved ?? []), ...(history ?? []).flatMap((r) => (r.post ? [r.post] : []))]);
+  }, [saved, history]);
 
   // Server list + posts saved since it was loaded, minus ones just unsaved
   const overrides = useSaveOverrides();
@@ -140,7 +144,7 @@ function SavedCard({ post }: { post: FeedPost }) {
       accessibilityLabel={post.title ?? post.place.name}
       className="w-40 overflow-hidden rounded-md bg-soft-gray active:opacity-80"
     >
-      <Img source={post.imageUrl} className="h-[110px] w-40 bg-line" contentFit="cover" transition={200} />
+      <Img source={sizedImage(post.imageUrl, 160)} className="h-[110px] w-40 bg-line" contentFit="cover" transition={200} />
       <View className="gap-0.5 p-2.5">
         <Text className="text-sm font-bold text-ink" numberOfLines={1}>
           {post.title ?? post.place.name}
@@ -166,7 +170,7 @@ function HistoryRow({ run }: { run: PastTrip }) {
       className="flex-row items-center gap-3 active:opacity-80"
     >
       {post ? (
-        <Img source={post.imageUrl} className="h-14 w-14 rounded-xl bg-line" contentFit="cover" transition={200} />
+        <Img source={sizedImage(post.imageUrl, 56)} className="h-14 w-14 rounded-xl bg-line" contentFit="cover" transition={200} />
       ) : (
         <View className="h-14 w-14 items-center justify-center rounded-xl bg-soft-gray">
           <Ionicons name="map" size={22} color={colors.textMuted} />

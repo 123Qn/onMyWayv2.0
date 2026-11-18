@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import * as api from "./api";
 import type { User } from "./api";
 import { getGoogleIdToken, signOutGoogle } from "./googleAuth";
-import { refreshMyProfile } from "./profileApi";
+import { hydrateFeed, refreshFeed } from "./postsApi";
+import { hydrateMyProfile, refreshMyProfile } from "./profileApi";
 import { resetMyProfile } from "./rewards";
 import { refreshUnreadCount, resetNotifications } from "./notifications";
 import { resetTripRecorder, restoreTrip } from "./tripRecorder";
@@ -32,9 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .loadSession()
       .then((session) => {
         if (!session) return;
+        // Last run's feed and profile first, so Home opens with content instead of a spinner
+        hydrateFeed();
+        hydrateMyProfile(session.user.id);
         setUser(session.user);
         // Check the session in the background; an expired refresh token signs the user out
         api.fetchMe().catch(() => {});
+        // Start the feed request now, in parallel with the rest; Home picks up the same request
+        refreshFeed().catch(() => {});
       })
       .finally(() => setLoading(false));
 

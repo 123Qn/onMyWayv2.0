@@ -7,6 +7,7 @@ import { askAssistant, fetchConversation, fetchConversations, type AssistantMess
 import { cn } from "../lib/cn";
 import type { FeedPost } from "../lib/feed";
 import { flagEmoji, monthRanges } from "../lib/format";
+import { sizedImage } from "../lib/image";
 import { colors } from "../lib/theme";
 import { AssistantMascot } from "../components/AssistantMascot";
 import { Img, Screen, ScreenHeader } from "../components/ui";
@@ -230,7 +231,7 @@ function PostChip({ post }: { post: FeedPost }) {
       accessibilityLabel={post.title ?? post.place.name}
       className="w-44 overflow-hidden rounded-md bg-white active:opacity-80"
     >
-      <Img source={post.imageUrl} className="h-24 w-44 bg-lime-tint" contentFit="cover" transition={150} />
+      <Img source={sizedImage(post.imageUrl, 176)} className="h-24 w-44 bg-lime-tint" contentFit="cover" transition={150} />
       <View className="gap-0.5 p-2.5">
         <Text className="text-[13px] font-bold text-ink" numberOfLines={1}>{post.title ?? post.place.name}</Text>
         <Text className="text-xs text-muted" numberOfLines={1}>{post.author.name}</Text>

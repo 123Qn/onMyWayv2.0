@@ -89,10 +89,13 @@ export function groupMoments(posts: FeedPost[], now = Date.now()): MomentGroup[]
 }
 
 let allPosts: FeedPost[] = [];
+// id -> post, so opening a post doesn't scan the whole feed
+let feedById = new Map<number, FeedPost>();
 const feedListeners = new Set<() => void>();
 
 function setFeed(posts: FeedPost[]) {
   allPosts = [...posts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  feedById = new Map(allPosts.map((p) => [p.id, p]));
   feedListeners.forEach((l) => l());
 }
 
@@ -100,8 +103,7 @@ export const setFeedPosts = (posts: FeedPost[]) => setFeed(posts);
 
 /** Older posts loaded while scrolling, added after the ones already there */
 export const appendFeedPosts = (posts: FeedPost[]) => {
-  const ids = new Set(allPosts.map((p) => p.id));
-  setFeed([...allPosts, ...posts.filter((p) => !ids.has(p.id))]);
+  setFeed([...allPosts, ...posts.filter((p) => !feedById.has(p.id))]);
 };
 
 /** The oldest post in the feed, where the next page starts */
@@ -133,4 +135,4 @@ export function rememberPosts(posts: FeedPost[]) {
   for (const post of posts) knownPosts.set(post.id, post);
 }
 
-export const getPostById = (id: number) => allPosts.find((p) => p.id === id) ?? knownPosts.get(id);
+export const getPostById = (id: number) => feedById.get(id) ?? knownPosts.get(id);

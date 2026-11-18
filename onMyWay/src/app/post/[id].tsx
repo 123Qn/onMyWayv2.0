@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
+import { useMemo, useRef, useState, type ComponentRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,8 @@ import { useAuth } from "../../lib/AuthContext";
 import { compactNumber, flagEmoji, timeAgo, stopsLabel } from "../../lib/format";
 import { getPostById, isByUser, postKind, type FeedComment } from "../../lib/feed";
 import { deletePost, fetchComments } from "../../lib/postsApi";
+import { useQuery } from "../../lib/cache";
+import { useAfterTransition } from "../../lib/hooks";
 import { useFollowing, usePostState } from "../../lib/postStore";
 import { useTripRecorder } from "../../lib/tripRecorder";
 import { usePost } from "../../lib/usePost";
@@ -34,6 +36,8 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { TripMap } from "../../components/TripMap";
 import { TripStops } from "../../components/TripStops";
 import { AnimatedScrollView, AnimatedText, AnimatedView, Img } from "../../components/ui";
+
+const NO_COMMENTS: FeedComment[] = [];
 
 export default function PostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,7 +61,10 @@ function PostDetail({ postId }: { postId: number }) {
   const { liked, saved, likes, wantToGo, newComments, toggleLike, toggleSave, addComment } = usePostState(post);
   const isMine = isByUser(post, user);
   const frame = useAuthorFrame(post.author, isMine);
-  const [loadedComments, setLoadedComments] = useState<FeedComment[]>([]);
+  // Comments seen before show at once when the post is opened again
+  const loadedComments = useQuery(`comments:${post.id}`, () => fetchComments(post.id)).data ?? NO_COMMENTS;
+  // The route map (a WebView) is built once the screen has slid in
+  const showMap = useAfterTransition();
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   // The comment being answered from the composer, and threads whose older replies are shown
@@ -90,10 +97,6 @@ function PostDetail({ postId }: { postId: number }) {
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
-
-  useEffect(() => {
-    fetchComments(post.id).then(setLoadedComments, () => {});
-  }, [post.id]);
 
   const comments = useMemo(() => {
     // Comments I just added may also be in the loaded list
@@ -267,7 +270,7 @@ function PostDetail({ postId }: { postId: number }) {
                 accessibilityLabel={t("post.openMap")}
                 className="h-[220px] overflow-hidden rounded-[20px] bg-lime-tint"
               >
-                <TripMap stops={post.stops} className="absolute inset-0" />
+                {showMap ? <TripMap stops={post.stops} className="absolute inset-0" /> : null}
                 <View className="absolute bottom-3 right-3 flex-row items-center gap-1.5 rounded-2xl bg-white/95 px-3 py-[7px]">
                   <Ionicons name="expand" size={16} color={colors.deepGreen} />
                   <Text className="text-[13px] font-bold text-deep-green">{t("post.openMap")}</Text>

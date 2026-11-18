@@ -208,8 +208,12 @@ export type ProfileResponse = {
   stats: TravelStats;
 };
 
-/** Fill the store from GET /users/:id/profile for the signed-in user */
-export function applyMyProfile(profile: ProfileResponse) {
+/**
+ * Fill the store from GET /users/:id/profile for the signed-in user.
+ * fromCache: the copy saved at the last app run; the first fresh load after it is not celebrated,
+ * same as the first load after sign-in.
+ */
+export function applyMyProfile(profile: ProfileResponse, { fromCache = false } = {}) {
   const known = new Set<string>(BADGES.map((b) => b.id));
   const previous = state;
   const before = rewards;
@@ -225,7 +229,7 @@ export function applyMyProfile(profile: ProfileResponse) {
       country: profile.user.country,
       avatarUrl: profile.user.avatarUrl,
     },
-    loaded: true,
+    loaded: !fromCache,
   });
   // Celebrate what this refresh unlocked (not the first load after sign-in)
   if (previous.loaded && previous.userId === profile.user.id) celebrateChanges(before, rewards);

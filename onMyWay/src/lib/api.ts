@@ -1,6 +1,7 @@
 import * as Device from "expo-device";
 import { clearSession, getSession, saveSession, Session } from "./authStorage";
 import { t } from "../i18n";
+import { setCacheScope } from "./cache";
 
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.0.254:3000/api";
@@ -29,11 +30,13 @@ export function subscribeSession(listener: (session: Session | null) => void) {
 
 export async function loadSession() {
   current = await getSession();
+  setCacheScope(current?.user.id ?? null);
   return current;
 }
 
 async function setSession(session: Session | null) {
   current = session;
+  setCacheScope(session?.user.id ?? null);
   if (session) await saveSession(session);
   else await clearSession();
   onSessionChange?.(session);

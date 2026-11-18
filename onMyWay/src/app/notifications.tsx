@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
+import { useEffect } from "react";
 import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { t } from "../i18n";
 import { cn } from "../lib/cn";
 import { timeAgo } from "../lib/format";
-import { useFocusLoad, useRefresh } from "../lib/hooks";
+import { sizedImage } from "../lib/image";
+import { useQuery } from "../lib/cache";
 import { fetchNotifications, markAllRead, type AppNotification } from "../lib/notifications";
 import type { FrameId } from "../lib/rewards";
 import { colors } from "../lib/theme";
@@ -21,23 +22,15 @@ const TYPE_ICON = {
 } as const;
 
 export default function NotificationsScreen() {
-  const [items, setItems] = useState<AppNotification[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  // Last list shows at once, refreshed on every visit
+  const query = useQuery("notifications", fetchNotifications);
+  const items = query.failed ? [] : (query.data ?? null);
+  const { failed, refreshing, refresh: onRefresh } = query;
 
-  const load = useCallback(async () => {
-    try {
-      const list = await fetchNotifications();
-      setItems(list);
-      setFailed(false);
-      // Seen now: clear the bell (the list keeps showing which ones were new)
-      if (list.some((n) => !n.read)) markAllRead().catch(() => {});
-    } catch {
-      setFailed(true);
-      setItems((prev) => prev ?? []);
-    }
-  }, []);
-  useFocusLoad(load);
-  const { refreshing, onRefresh } = useRefresh(load);
+  // Seen now: clear the bell (the list keeps showing which ones were new)
+  useEffect(() => {
+    if (query.data?.some((n) => !n.read)) markAllRead().catch(() => {});
+  }, [query.data]);
 
   return (
     <Screen className="flex-1 bg-white" edges={["top"]}>
@@ -102,7 +95,7 @@ function NotificationRow({ item }: { item: AppNotification }) {
         ) : null}
         <Text className="text-xs text-muted">{timeAgo(item.createdAt)}</Text>
       </View>
-      {item.post?.imageUrl ? <Img source={item.post.imageUrl} className="h-12 w-12 rounded-[10px] bg-lime-tint" contentFit="cover" /> : null}
+      {item.post?.imageUrl ? <Img source={sizedImage(item.post.imageUrl, 48)} className="h-12 w-12 rounded-[10px] bg-lime-tint" contentFit="cover" /> : null}
       {!item.read ? <View className="ml-1 h-2 w-2 rounded-full bg-deep-green" /> : null}
     </Pressable>
   );

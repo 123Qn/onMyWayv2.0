@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
-import { useFocusEffect } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import {
@@ -17,7 +16,7 @@ import {
 } from "../../lib/communityApi";
 import { cn } from "../../lib/cn";
 import { compactNumber, flagEmoji } from "../../lib/format";
-import { useFocusLoad, useRefresh } from "../../lib/hooks";
+import { cachedFetch, useQuery } from "../../lib/cache";
 import type { FrameId } from "../../lib/rewards";
 import { onScrollHideTabBar } from "../../lib/tabBarVisibility";
 import { colors } from "../../lib/theme";
@@ -54,32 +53,32 @@ const refreshControl = (refreshing: boolean, onRefresh: () => void) => (
 // ---------------------------------------------------------------------------
 // Travelers: search, people to follow, everyone
 // ---------------------------------------------------------------------------
+const NO_SUGGESTIONS: SuggestedTraveler[] = [];
+
 function TravelersSection() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const [travelers, setTravelers] = useState<Traveler[] | null>(null);
-  const [suggested, setSuggested] = useState<SuggestedTraveler[]>([]);
-  const [failed, setFailed] = useState(false);
   const q = query.trim();
-  const latestQuery = useRef(q);
-  latestQuery.current = q;
-
-  const load = useCallback(async (search: string) => {
-    const [list, sug] = await Promise.allSettled([fetchTravelers(search), search ? Promise.resolve(null) : fetchSuggestedTravelers()]);
-    if (list.status === "fulfilled") setTravelers(list.value);
-    if (sug.status === "fulfilled" && sug.value) setSuggested(sug.value);
-    setFailed(list.status === "rejected");
-  }, []);
 
   // Search as you type, a moment after the last key
+  const [search, setSearch] = useState(q);
   useEffect(() => {
-    const timer = setTimeout(() => load(q), q ? 300 : 0);
+    const timer = setTimeout(() => setSearch(q), q ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [q, load]);
+  }, [q]);
 
-  // Fresh follow state when coming back from a profile
-  useFocusLoad(() => load(latestQuery.current));
-  const { refreshing, onRefresh } = useRefresh(() => load(latestQuery.current));
+  // Each search is cached: deleting back to an earlier query shows its results at once.
+  // Refreshed on focus too, for fresh follow state when coming back from a profile.
+  const list = useQuery(`travelers:${search}`, () => fetchTravelers(search));
+  const suggestions = useQuery(search ? null : "travelers:suggested", fetchSuggestedTravelers);
+  const travelers = list.data ?? null;
+  const suggested = suggestions.data ?? NO_SUGGESTIONS;
+  const failed = list.failed;
+  const refreshing = list.refreshing || suggestions.refreshing;
+  const onRefresh = () => {
+    list.refresh();
+    suggestions.refresh();
+  };
 
   return (
     <ScrollView
@@ -152,6 +151,7 @@ function SuggestedCard({ traveler, myId }: { traveler: SuggestedTraveler; myId?:
 // Leaderboard: real kilometres, countries and trips per period
 // ---------------------------------------------------------------------------
 const METRICS: LeaderboardMetric[] = ["km", "countries", "trips"];
+const boardKey = (metric: LeaderboardMetric, period: LeaderboardPeriod) => `leaderboard:${metric}:${period}`;
 const PERIODS: LeaderboardPeriod[] = ["week", "month", "all"];
 // Gold, silver, bronze
 const MEDALS = ["bg-gold", "bg-[#A7B1B5]", "bg-[#C98A5A]"];
@@ -160,25 +160,18 @@ function LeaderboardSection() {
   const { user } = useAuth();
   const [metric, setMetric] = useState<LeaderboardMetric>("km");
   const [period, setPeriod] = useState<LeaderboardPeriod>("month");
-  const [board, setBoard] = useState<Leaderboard | null>(null);
-  const [failed, setFailed] = useState(false);
+  // Each metric/period board is cached, so switching back to one is instant; refreshed on focus
+  const boardQuery = useQuery(boardKey(metric, period), () => fetchLeaderboard(metric, period), { maxAge: 10_000 });
+  const board = boardQuery.data ?? null;
+  const { failed, refreshing, refresh: onRefresh } = boardQuery;
 
-  const load = useCallback(async () => {
-    try {
-      setBoard(await fetchLeaderboard(metric, period));
-      setFailed(false);
-    } catch {
-      setFailed(true);
+  // Load the other metrics of this period in the background: the next tap shows at once
+  useEffect(() => {
+    if (!board) return;
+    for (const m of METRICS) {
+      if (m !== metric) cachedFetch(boardKey(m, period), () => fetchLeaderboard(m, period), { maxAge: 60_000 }).catch(() => {});
     }
-  }, [metric, period]);
-
-  // On focus, and again whenever the metric or period changes
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
-  const { refreshing, onRefresh } = useRefresh(load);
+  }, [board, metric, period]);
 
   // Only show the board that matches the selected tabs (no flash of the previous one)
   const current = board && board.metric === metric && board.period === period ? board : null;

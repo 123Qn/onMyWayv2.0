@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, Text } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
-import type { FeedPost } from "../../lib/feed";
-import { useFocusLoad, useRefresh } from "../../lib/hooks";
-import { fetchProfile, fetchUserPosts } from "../../lib/profileApi";
-import { BADGES, computeRewards, type BadgeId, type BadgeProgress, type FrameId, type ProfileResponse } from "../../lib/rewards";
+import { rememberPosts, type FeedPost } from "../../lib/feed";
+import { useQuery } from "../../lib/cache";
+import { fetchProfile, fetchUserPosts, profileKey, userPostsKey } from "../../lib/profileApi";
+import { BADGES, computeRewards, type BadgeId, type BadgeProgress, type FrameId } from "../../lib/rewards";
 import { colors } from "../../lib/theme";
 import { AvatarFrame } from "../../components/AvatarFrame";
 import { BadgeSheet } from "../../components/BadgeSheet";
@@ -13,23 +13,27 @@ import { FollowButton } from "../../components/FollowButton";
 import { BadgesCard, LevelPill, PostsGridCard, ProfileHero, ShowcaseCard, TravelStatRow } from "../../components/profile/ProfileParts";
 import { BackButton, Loading, Screen } from "../../components/ui";
 
+const EMPTY_POSTS: FeedPost[] = [];
+
 // Another traveler's profile: who they are, their travel stats, badges and posts
 export default function TravelerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const userId = Number(id);
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<BadgeProgress | null>(null);
 
-  const load = useCallback(async () => {
-    const [p, list] = await Promise.allSettled([fetchProfile(userId), fetchUserPosts(userId)]);
-    if (p.status === "fulfilled") setProfile(p.value);
-    if (list.status === "fulfilled") setPosts(list.value);
-    setFailed(p.status === "rejected");
-  }, [userId]);
-  useFocusLoad(load);
-  const { refreshing, onRefresh } = useRefresh(load);
+  // Opening a traveler again shows them at once from the cache, then refreshes
+  const profileQuery = useQuery(profileKey(userId), () => fetchProfile(userId));
+  const postsQuery = useQuery(userPostsKey(userId), () => fetchUserPosts(userId));
+  const profile = profileQuery.data ?? null;
+  const posts = postsQuery.data ?? EMPTY_POSTS;
+  const failed = profileQuery.failed;
+  const refreshing = profileQuery.refreshing || postsQuery.refreshing;
+  const onRefresh = () => {
+    profileQuery.refresh();
+    postsQuery.refresh();
+  };
+  const load = profileQuery.reload;
+  useEffect(() => rememberPosts(posts), [posts]);
 
   const rewards = useMemo(() => (profile ? computeRewards(profile.stats) : null), [profile]);
 

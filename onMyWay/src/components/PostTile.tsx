@@ -2,6 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { postKind, type FeedPost } from "../lib/feed";
+import { sizedImage } from "../lib/image";
 import { colors } from "../lib/theme";
 import { Img } from "./ui";
 
@@ -21,7 +22,7 @@ export function PostTile({ post, size }: { post: FeedPost; size: number }) {
       style={{ width: size, height: size }}
     >
       {post.imageUrl ? (
-        <Img source={post.imageUrl} className="absolute inset-0" contentFit="cover" transition={150} />
+        <Img source={sizedImage(post.imageUrl, size)} className="absolute inset-0" contentFit="cover" transition={150} />
       ) : (
         <View className="flex-1 justify-center p-2">
           <Text className="text-xs font-bold text-deep-green" numberOfLines={4}>{post.caption}</Text>

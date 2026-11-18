@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const compression = require('compression');
 
 const apiRoutes = require('./src/routes');
 const { UPLOAD_DIR } = require('./src/services/media.service');
@@ -14,6 +15,8 @@ const app = express();
 // Global middleware
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.use(cors());
+// gzip JSON responses: the feed page shrinks ~5x, which is what a phone on mobile data waits for
+app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

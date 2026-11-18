@@ -8,6 +8,7 @@ import { useAuth } from "../../lib/AuthContext";
 import type { FeedPost, TripStop } from "../../lib/feed";
 import { usePost } from "../../lib/usePost";
 import { refreshMyProfile } from "../../lib/profileApi";
+import { useAfterTransition } from "../../lib/hooks";
 import {
   LocationPermissionError,
   currentPosition,
@@ -188,18 +189,20 @@ function TripMode({ post }: { post: FeedPost }) {
     Linking.openURL(url).catch(() => Alert.alert(t("post.mapsError")));
   };
 
+  // The map WebView is built once the screen has slid in
+  const showMap = useAfterTransition();
   const elapsed = activeHere ? formatElapsed(Date.now() - Date.parse(recorder.run!.startedAt)) : null;
 
   return (
     <View className="flex-1 bg-lime-tint">
-      <LiveTripMap
+      {showMap ? <LiveTripMap
         stops={post.stops}
         visited={visited}
         route={route?.coordinates ?? null}
         user={position}
         fitKey={fitKey}
         className="absolute inset-0"
-      />
+      /> : null}
 
       <View className="absolute left-4 right-4 top-0 flex-row items-center gap-2.5" style={{ paddingTop: insets.top + 8 }}>
         <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("post.back")} className={ROUND}>

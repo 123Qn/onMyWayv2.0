@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { FlatList, Text } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { t } from "../../i18n";
 import { useAuth } from "../../lib/AuthContext";
 import { fetchFollows, openProfile, type Traveler } from "../../lib/communityApi";
-import { useFocusLoad } from "../../lib/hooks";
+import { useQuery } from "../../lib/cache";
 import { FollowButton } from "../../components/FollowButton";
 import { Loading, Screen, ScreenHeader, SegmentedControl, UserRow } from "../../components/ui";
 
@@ -16,18 +16,11 @@ export default function FollowsScreen() {
   const userId = Number(id);
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>(initialTab === "following" ? "following" : "followers");
-  const [lists, setLists] = useState<Partial<Record<Tab, Traveler[]>>>({});
-  const [failed, setFailed] = useState(false);
-
-  const load = useCallback(async () => {
-    const [followers, following] = await Promise.allSettled([fetchFollows(userId, "followers"), fetchFollows(userId, "following")]);
-    setLists({
-      followers: followers.status === "fulfilled" ? followers.value : undefined,
-      following: following.status === "fulfilled" ? following.value : undefined,
-    });
-    setFailed(followers.status === "rejected" && following.status === "rejected");
-  }, [userId]);
-  useFocusLoad(load);
+  // Both tabs load together (counts in the tab labels); cached, so going back to this screen is instant
+  const followers = useQuery(`follows:${userId}:followers`, () => fetchFollows(userId, "followers"));
+  const following = useQuery(`follows:${userId}:following`, () => fetchFollows(userId, "following"));
+  const lists: Partial<Record<Tab, Traveler[]>> = { followers: followers.data, following: following.data };
+  const failed = followers.failed && following.failed;
 
   const list = lists[tab];
   const count = (k: Tab) => (lists[k] ? ` · ${lists[k]!.length}` : "");

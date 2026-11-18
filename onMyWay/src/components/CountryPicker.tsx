@@ -3,12 +3,15 @@ import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { t } from "../i18n";
+import { cachedFetch, peekCache } from "../lib/cache";
 import { fetchCountries, type Country } from "../lib/communityApi";
 import { flagEmoji } from "../lib/format";
 import { colors } from "../lib/theme";
 import { Loading, ScreenHeader, SearchField } from "./ui";
 
-let cached: Country[] | null = null;
+// The country list hardly ever changes: kept on disk for a week
+const COUNTRIES_KEY = "countries";
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Full-screen searchable list of countries */
 export function CountryPicker({
@@ -23,17 +26,13 @@ export function CountryPicker({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [countries, setCountries] = useState<Country[] | null>(cached);
+  const [countries, setCountries] = useState<Country[] | null>(() => peekCache<Country[]>(COUNTRIES_KEY, { persist: true }) ?? null);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!visible || cached) return;
-    fetchCountries().then(
-      (list) => {
-        cached = list;
-        setCountries(list);
-      },
-      () => setCountries([])
+    if (!visible) return;
+    cachedFetch(COUNTRIES_KEY, fetchCountries, { persist: true, maxAge: WEEK_MS }).then(setCountries, () =>
+      setCountries((prev) => prev ?? [])
     );
   }, [visible]);
 

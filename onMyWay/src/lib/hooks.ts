@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useNavigation } from "expo-router";
 
 /**
  * Pull-to-refresh state for a screen: refreshing is true while load() runs from a pull.
@@ -28,4 +28,24 @@ export function useFocusLoad(load: () => unknown) {
       latest.current();
     }, [])
   );
+}
+
+/**
+ * false until the screen's open animation has finished. Heavy parts (a map WebView) mount after
+ * it, so the screen slides in smoothly and its text and photo show first.
+ */
+export function useAfterTransition(fallbackMs = 450) {
+  const navigation = useNavigation();
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (ready) return;
+    // Opened without an animation (deep link, first screen): the fallback timer covers it
+    const timer = setTimeout(() => setReady(true), fallbackMs);
+    const unsubscribe = navigation.addListener("transitionEnd" as never, () => setReady(true));
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [navigation, ready, fallbackMs]);
+  return ready;
 }

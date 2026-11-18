@@ -7,6 +7,7 @@ import { useAuth } from "../lib/AuthContext";
 import { cn } from "../lib/cn";
 import { timeAgo } from "../lib/format";
 import { groupMoments, useFeedPosts, type MomentGroup } from "../lib/feed";
+import { sizedImage } from "../lib/image";
 import { useSeenMoments } from "../lib/postStore";
 import { colors } from "../lib/theme";
 import { Avatar } from "./Avatar";
@@ -47,7 +48,7 @@ export function OnTheRoad() {
         >
           <View className={cn(RING_CLASS, mine ? "border-dashed border-lime-green" : "border-solid border-line")}>
             {mine ? (
-              <Img source={mine.latest.imageUrl} className="flex-1 rounded-full bg-lime-tint" contentFit="cover" transition={200} />
+              <Img source={sizedImage(mine.latest.imageUrl, RING)} className="flex-1 rounded-full bg-lime-tint" contentFit="cover" transition={200} />
             ) : (
               <View className="flex-1 items-center justify-center overflow-hidden rounded-full">
                 {user ? <Avatar name={user.name} size={RING - 14} uri={user.avatarUrl} /> : null}
@@ -105,7 +106,7 @@ function TravelerRing({ group, unseen, onPress }: { group: MomentGroup; unseen: 
     >
       <View className={cn(RING_CLASS, unseen ? "border-dashed border-lime-green" : "border-solid border-line")}>
         <Img
-          source={latest.imageUrl}
+          source={sizedImage(latest.imageUrl, RING)}
           className={cn("flex-1 rounded-full bg-lime-tint", !unseen && "opacity-85")}
           contentFit="cover"
           transition={200}

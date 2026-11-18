@@ -188,6 +188,28 @@ DA LAM HOM NAY
    - Luu y moi truong: app tren dien thoai tim Metro o localhost:8082 (bundle location da doi) ->
      can "adb reverse tcp:8082 tcp:8081" ngoai tcp:8081.
 
+=== 2026-11-18 ===
+
+16. Toi uu loading (lazy loading + cache du lieu) - CHUA COMMIT
+   - lib/cache.ts: cache stale-while-revalidate cho GET. useQuery(key, fetcher, {persist}) hien du lieu cu ngay,
+     tai lai o nen khi mo/quay lai man; gop request trung (cung key chi goi server 1 lan); persist = luu file
+     trong Paths.cache/query-cache, tach theo user id, dang xuat thi xoa het.
+   - Khoi dong app: doc session xong -> hien ngay feed + profile cua lan truoc tu dia, dong thoi goi /posts
+     song song (khong doi Home mount). Home dung chung request do.
+   - Da chuyen sang useQuery: Trips (saved, trip-runs: persist), Profile (bai cua minh: persist), profile nguoi
+     khac, Followers, Notifications, Community (moi tu khoa tim kiem / moi bang xep hang cache rieng, tai truoc
+     2 metric con lai), comment trong bai, danh sach quoc gia (persist 7 ngay).
+   - Anh: lib/image.ts sizedImage() xin anh Unsplash dung kich thuoc hien thi (avatar/vong moments ~160-320px
+     thay vi 1000px); Img mac dinh cachePolicy memory-disk; tai truoc anh bia cua trang feed tiep theo.
+   - Lazy: PhotoCarousel chi dung anh dang xem + anh ke tiep (truoc: dung het toi 10 anh moi the);
+     FlatList Home initialNumToRender 3 / windowSize 7; ban do WebView o trang bai va trang trip chi dung sau
+     khi hieu ung chuyen man xong (useAfterTransition trong lib/hooks.ts).
+   - Backend: gzip (compression) -> feed 19.7 KB con 4.4 KB; gom stops theo post bang Map.
+   - DA THU va BO: Metro inlineRequires. Lam expo-task-manager nap tre -> "No task registered for key
+     expo-task-manager" -> co the hong ghi GPS nen. Khong bat lai.
+   - Da test tren emulator: Home hien feed tu cache khi mo lai app, Trips/Community/Profile, chi tiet bai
+     (ban do + comment). tsc OK.
+
 CACH CHAY LAI MOI TRUONG
 - Docker Desktop -> cd Backend && npm run db:up   (container onmyway-db, Postgres cong 5433)
 - cd Backend && npm run dev                       (API cong 3000)

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image as ExpoImage } from "expo-image";
@@ -8,8 +9,15 @@ import { withUniwind } from "uniwind";
 /** Safe-area screen container that takes className: <Screen className="flex-1 bg-white" edges={["top"]}> */
 export const Screen = withUniwind(SafeAreaView);
 
-/** expo-image with className */
-export const Img = withUniwind(ExpoImage);
+const StyledImage = withUniwind(ExpoImage);
+
+/**
+ * expo-image with className. Kept in memory as well as on disk, so going back to a screen
+ * shows its photos without decoding them again.
+ */
+export function Img(props: ComponentProps<typeof StyledImage>) {
+  return <StyledImage cachePolicy="memory-disk" {...props} />;
+}
 
 /** Animated views with className for the static look; animated values still go in style */
 export const AnimatedView = withUniwind(Animated.View);

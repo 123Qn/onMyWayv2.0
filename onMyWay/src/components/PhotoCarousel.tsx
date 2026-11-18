@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, FlatList, Pressable, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "../lib/cn";
+import { sizedImage } from "../lib/image";
 import { colors } from "../lib/theme";
 import { AnimatedView, Img } from "./ui/Screen";
 
@@ -65,9 +66,13 @@ export function PhotoCarousel({ slides, onTap, onDoubleTap, renderOverlay }: Pro
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={onScrollEnd}
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+            // Lazy: only the photo on screen and the next one are loaded; the rest as you swipe
+            initialNumToRender={1}
+            maxToRenderPerBatch={1}
+            windowSize={3}
             renderItem={({ item }) => (
               <Pressable onPress={handlePress} accessibilityLabel={item.label} style={{ width }}>
-                <Img source={item.uri} className="h-full w-full" contentFit="cover" transition={250} />
+                <Img source={sizedImage(item.uri, width)} className="h-full w-full" contentFit="cover" transition={250} />
               </Pressable>
             )}
           />
